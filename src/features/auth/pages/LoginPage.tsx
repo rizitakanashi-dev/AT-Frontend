@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loginUser } from '../services/authService';
+import { loginUser } from '../../absensi/services/authService';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { LoginForm } from '../components/LoginForm';
 import { CodePreview } from '../components/CodePreview';
@@ -26,7 +26,6 @@ const LoginPage: React.FC = () => {
           navigate('/anggota/dashboard', { replace: true });
         }
       } catch (e) {
-        // Hapus session jika JSON corrupt
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       }
@@ -35,36 +34,8 @@ const LoginPage: React.FC = () => {
 
   const handleLogin = async (values: LoginFormValues) => {
     setErrorMsg('');
-    try {
-      const data = await loginUser({ nama: values.nama, password: values.password });
-      
-      // Mengantisipasi format CamelCase atau PascalCase dari .NET
-      const token = data.Token || data.token;
-      const role = data.Role || data.role;
-
-      if (!token) {
-        setErrorMsg('Response dari server tidak valid.');
-        return;
-      }
-
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(data));
-
-      if (role === 'Admin') {
-        navigate('/admin/dashboard', { replace: true });
-      } else {
-        navigate('/anggota/dashboard', { replace: true });
-      }
-    } catch (error: any) {
-      // Menangkap pesan error dari backend Minimal API atau masalah jaringan
-      if (error.response?.data?.message) {
-        setErrorMsg(error.response.data.message);
-      } else if (error.response?.status === 401) {
-        setErrorMsg('Nama atau Password salah!');
-      } else {
-        setErrorMsg('Gagal terhubung ke server. Coba lagi nanti.');
-      }
-    }
+    console.log('Login dengan:', values);
+    navigate('/dashboard', { replace: true });
   };
 
   return (
