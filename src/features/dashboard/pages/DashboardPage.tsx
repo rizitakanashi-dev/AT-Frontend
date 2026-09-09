@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Home,
@@ -11,7 +11,22 @@ import {
   Settings,
   Clock,
   CheckCircle2,
+  X,
 } from 'lucide-react';
+import api from '@/lib/api';
+
+interface Project {
+  id: number;
+  nama: string;
+}
+
+interface WorkLog {
+  id: number;
+  time: string;
+  title: string;
+  desc: string;
+  status: string;
+}
 
 const navItems = [
   { label: 'Home', icon: Home, path: '/dashboard' },
@@ -20,16 +35,43 @@ const navItems = [
   { label: 'Riwayat', icon: History, path: '/dashboard/riwayat' },
 ];
 
-const logs = [
-  { time: '08:00 AM', title: 'Check-in', desc: 'Hadir tepat waktu di Lab TI' },
-  { time: '11:30 AM', title: 'Work Log', desc: 'Membuat UI/Mockup untuk AbsensiApp' },
-  { time: '03:00 PM', title: 'Work Log', desc: 'Finalisasi core features & testing' },
+const defaultLogs: WorkLog[] = [
+  { id: 1, time: '08:00 AM', title: 'Check-in', desc: 'Hadir tepat waktu di Lab TI', status: 'Completed' },
+  { id: 2, time: '11:30 AM', title: 'Work Log', desc: 'Membuat UI/Mockup untuk AbsensiApp', status: 'In Progress' },
+  { id: 3, time: '03:00 PM', title: 'Work Log', desc: 'Finalisasi core features & testing', status: 'Pending' },
 ];
 
 export default function DashboardPage() {
-  const [selectedProject, setSelectedProject] = useState('NicaAdmin Dark Design');
+  const [selectedProject, setSelectedProject] = useState<number | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [workLogs, setWorkLogs] = useState<WorkLog[]>(defaultLogs);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [checkInForm, setCheckInForm] = useState({ project: '', target: '' });
+
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get<Project[]>('/v1/project');
+        setProjects(response.data || []);
+        if (response.data && response.data.length > 0) {
+          setSelectedProject(response.data[0].id);
+        }
+      } catch (err) {
+        setError('Gagal memuat data project');
+        console.error('Error fetching projects:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -37,16 +79,57 @@ export default function DashboardPage() {
     navigate('/', { replace: true });
   };
 
+  const handleCheckIn = async () => {
+    if (!selectedProject || !checkInForm.target) {
+      setError('Harap isi semua field');
+      return;
+    }
+
+    try {
+      const payload = {
+        idProject: selectedProject,
+        target: checkInForm.target,
+        idStatus: 2,
+      };
+
+      const response = await api.post('/v1/absen/masuk', payload);
+      console.log('Check-in berhasil:', response.data);
+
+      const newLog: WorkLog = {
+        id: workLogs.length + 1,
+        time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+        title: 'Check-in',
+        desc: checkInForm.target,
+        status: 'Completed',
+      };
+      setWorkLogs([newLog, ...workLogs]);
+
+      setShowCheckInModal(false);
+      setCheckInForm({ project: '', target: '' });
+    } catch (err) {
+      setError('Gagal melakukan check-in');
+      console.error('Check-in error:', err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">
       <aside className="flex w-64 flex-col justify-between border-r border-slate-800 bg-slate-900/50 p-5">
         <div>
           <div className="mb-8 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 font-bold">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 font-bold text-emerald-400">
               A
             </div>
             <span className="text-lg font-bold">
-              AbsensiApp <span className="ml-1 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] text-emerald-400 align-middle">PRO</span>
+              AbsensiApp <span className="ml-1 rounded bg-emerald-500/20 px-1.5 py-0.5 align-middle text-[10px] text-emerald-400">PRO</span>
             </span>
           </div>
 
@@ -67,7 +150,7 @@ export default function DashboardPage() {
                   onClick={() => navigate(path)}
                   className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                     active
-                      ? 'bg-emerald-500/10 text-emerald-400 font-medium'
+                      ? 'bg-emerald-500/10 font-medium text-emerald-400'
                       : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
                   }`}
                 >
@@ -111,17 +194,25 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-400">
+            {error}
+          </div>
+        )}
+
         <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
             <p className="mb-2 text-xs text-slate-500">PILIH PROJEK</p>
             <select
-              value={selectedProject}
-              onChange={(e) => setSelectedProject(e.target.value)}
+              value={selectedProject || ''}
+              onChange={(e) => setSelectedProject(Number(e.target.value))}
               className="w-full rounded-lg bg-slate-800/60 px-3 py-2 text-sm focus:outline-none"
             >
-              <option>NicaAdmin Dark Design</option>
-              <option>Website Sekolah</option>
-              <option>App Absensi Mobile</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nama}
+                </option>
+              ))}
             </select>
             <p className="mt-2 text-[11px] text-slate-500">
               Projek saat ini di bawah pengawasan Guru SMK Attaufiq
@@ -171,8 +262,8 @@ export default function DashboardPage() {
 
           <p className="mb-3 text-xs text-slate-500">RIWAYAT LOG MASUK/AKTIVITAS HARI INI</p>
           <div className="mb-6 space-y-3">
-            {logs.map((log, i) => (
-              <div key={i} className="flex gap-4 text-sm">
+            {workLogs.map((log) => (
+              <div key={log.id} className="flex gap-4 text-sm">
                 <span className="w-20 shrink-0 text-emerald-400">{log.time}</span>
                 <div>
                   <p className="font-medium">{log.title}</p>
@@ -190,7 +281,10 @@ export default function DashboardPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <button className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400">
+              <button
+                onClick={() => setShowCheckInModal(true)}
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400"
+              >
                 CI (Check-In)
               </button>
               <button className="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-700">
@@ -200,6 +294,76 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      {/* Check-In Modal */}
+      {showCheckInModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setShowCheckInModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between">
+              <div>
+                <h3 className="font-semibold">Check-In Absensi</h3>
+                <p className="text-xs text-slate-500">Masukkan detail pekerjaan Anda</p>
+              </div>
+              <button
+                onClick={() => setShowCheckInModal(false)}
+                className="rounded-lg p-1 text-slate-500 hover:bg-slate-800 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-xs text-slate-400">Project</label>
+                <select
+                  value={checkInForm.project || selectedProject || ''}
+                  onChange={(e) => setCheckInForm({ ...checkInForm, project: e.target.value })}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-800/40 px-3 py-2 text-sm text-white focus:outline-none"
+                >
+                  <option value="">Pilih Project</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nama}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs text-slate-400">Deskripsi Pekerjaan</label>
+                <textarea
+                  value={checkInForm.target}
+                  onChange={(e) => setCheckInForm({ ...checkInForm, target: e.target.value })}
+                  placeholder="Masukkan target/deskripsi pekerjaan Anda..."
+                  className="w-full rounded-lg border border-slate-700 bg-slate-800/40 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none"
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2 border-t border-slate-800 pt-4">
+              <button
+                onClick={() => setShowCheckInModal(false)}
+                className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-700"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleCheckIn}
+                className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400"
+              >
+                Konfirmasi Check-In
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

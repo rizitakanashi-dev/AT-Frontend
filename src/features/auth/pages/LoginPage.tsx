@@ -39,9 +39,9 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-white">
+    <div className="min-h-screen w-full bg-slate-50 text-slate-900 dark:bg-zinc-950 dark:text-white">
       <header className="flex items-center justify-between border-b border-dashed border-slate-200 dark:border-slate-800 px-8 py-4">
-        <span className="text-xl font-extrabold tracking-tight text-blue-600 dark:text-blue-400">
+        <span className="text-xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">
           binarycodingspace
         </span>
         <ThemeToggle />

@@ -1,0 +1,799 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "AbsensiApp Backend API",
+    "version": "1.0.0",
+    "description": "API specification untuk sistem manajemen absensi dan project tracking",
+    "contact": {
+      "name": "Tim Backend",
+      "email": "backend@absensiiapp.local"
+    },
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "Development server"
+    },
+    {
+      "url": "https://api.absensiiapp.local",
+      "description": "Production server"
+    }
+  ],
+  "paths": {
+    "/api/v1/absen/masuk": {
+      "post": {
+        "tags": ["Absensi"],
+        "summary": "Check-In Kehadiran Pelajar",
+        "description": "Endpoint untuk pelajar melakukan check-in (absen masuk) dengan mengupload foto lokasi dan timestamp otomatis",
+        "operationId": "checkInAbsensi",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["idPelajar", "foto", "longitude", "latitude"],
+                "properties": {
+                  "idPelajar": {
+                    "type": "string",
+                    "example": "USR-004",
+                    "description": "ID unik pelajar dari database master user"
+                  },
+                  "foto": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Foto selfie pelajar di lokasi kantor/lab (JPEG/PNG, max 5MB)"
+                  },
+                  "longitude": {
+                    "type": "number",
+                    "format": "double",
+                    "example": 106.8456,
+                    "description": "Koordinat bujur lokasi check-in (longitude)"
+                  },
+                  "latitude": {
+                    "type": "number",
+                    "format": "double",
+                    "example": -6.2088,
+                    "description": "Koordinat lintang lokasi check-in (latitude)"
+                  },
+                  "catatan": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "description": "Catatan tambahan (opsional), misal: kondisi tertentu"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Check-in berhasil dicatat",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Check-in berhasil dicatat"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "idAbsen": {
+                          "type": "string",
+                          "example": "ABS-2024-10-24-001"
+                        },
+                        "idPelajar": {
+                          "type": "string",
+                          "example": "USR-004"
+                        },
+                        "namaPelajar": {
+                          "type": "string",
+                          "example": "Ahmad Fauzi"
+                        },
+                        "waktuMasuk": {
+                          "type": "string",
+                          "format": "date-time",
+                          "example": "2024-10-24T08:12:00+07:00"
+                        },
+                        "statusKehadiran": {
+                          "type": "string",
+                          "enum": ["Tepat Waktu", "Terlambat", "Pending"],
+                          "example": "Tepat Waktu"
+                        },
+                        "statusVerifikasi": {
+                          "type": "string",
+                          "enum": ["Verified", "Pending Review", "Rejected"],
+                          "example": "Pending Review"
+                        },
+                        "fotoUrl": {
+                          "type": "string",
+                          "example": "https://storage.absensiiapp.local/absen/ABS-2024-10-24-001.jpg"
+                        },
+                        "koordinat": {
+                          "type": "object",
+                          "properties": {
+                            "longitude": {
+                              "type": "number",
+                              "example": 106.8456
+                            },
+                            "latitude": {
+                              "type": "number",
+                              "example": -6.2088
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request tidak valid atau data tidak lengkap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Foto harus dalam format JPEG atau PNG"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid atau expired"
+          },
+          "409": {
+            "description": "Conflict - Pelajar sudah melakukan check-in hari ini",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Anda sudah melakukan check-in hari ini pada pukul 08:12"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/guru/{id}": {
+      "get": {
+        "tags": ["Guru"],
+        "summary": "Dapatkan Detail Profil Guru",
+        "description": "Endpoint untuk mengambil informasi lengkap profil guru beserta daftar pelajar yang diawasi dan statistik monitoring",
+        "operationId": "getGuruDetail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "USR-003",
+            "description": "ID unik guru (dari master user)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detail profil guru berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "idGuru": {
+                          "type": "string",
+                          "example": "USR-003"
+                        },
+                        "namaGuru": {
+                          "type": "string",
+                          "example": "Siti Aminah"
+                        },
+                        "email": {
+                          "type": "string",
+                          "format": "email",
+                          "example": "siti.aminah@smk-attaufiq.sch.id"
+                        },
+                        "nip": {
+                          "type": "string",
+                          "example": "19750315 2005012 001",
+                          "description": "Nomor Induk Pegawai"
+                        },
+                        "spesialisasi": {
+                          "type": "string",
+                          "example": "Teknik Informatika",
+                          "description": "Bidang keahlian guru"
+                        },
+                        "divisi": {
+                          "type": "string",
+                          "example": "Pendidik",
+                          "description": "Unit/Departemen tempat guru bekerja"
+                        },
+                        "fotoProfil": {
+                          "type": "string",
+                          "format": "uri",
+                          "example": "https://storage.absensiiapp.local/profil/USR-003.jpg"
+                        },
+                        "statusAktif": {
+                          "type": "boolean",
+                          "example": true
+                        },
+                        "tanggalBergabung": {
+                          "type": "string",
+                          "format": "date",
+                          "example": "2015-03-15"
+                        },
+                        "statistik": {
+                          "type": "object",
+                          "description": "Statistik monitoring guru terhadap pelajar",
+                          "properties": {
+                            "totalPelajarDiawasi": {
+                              "type": "integer",
+                              "example": 12
+                            },
+                            "pelajarHadirHariIni": {
+                              "type": "integer",
+                              "example": 11
+                            },
+                            "pelajarTidakHadir": {
+                              "type": "integer",
+                              "example": 1
+                            },
+                            "rataRataKehadiran": {
+                              "type": "number",
+                              "format": "float",
+                              "example": 94.5,
+                              "description": "Persentase kehadiran rata-rata pelajar"
+                            },
+                            "rataRataJamKerja": {
+                              "type": "string",
+                              "example": "7.5 jam/hari",
+                              "description": "Rata-rata jam kerja pelajar"
+                            },
+                            "proyekAktif": {
+                              "type": "integer",
+                              "example": 2,
+                              "description": "Jumlah project yang sedang dimonitor"
+                            }
+                          }
+                        },
+                        "daftarPelajar": {
+                          "type": "array",
+                          "description": "Daftar pelajar yang diawasi guru",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "idPelajar": {
+                                "type": "string",
+                                "example": "USR-004"
+                              },
+                              "namaPelajar": {
+                                "type": "string",
+                                "example": "Ahmad Fauzi"
+                              },
+                              "statusHariIni": {
+                                "type": "string",
+                                "enum": ["Hadir", "Terlambat", "Tidak Hadir", "Pending"],
+                                "example": "Hadir"
+                              },
+                              "waktuCheckIn": {
+                                "type": "string",
+                                "format": "time",
+                                "example": "08:12"
+                              },
+                              "proyekTugasan": {
+                                "type": "string",
+                                "example": "NicaAdmin Dark Design"
+                              },
+                              "persentaseKehadiran": {
+                                "type": "number",
+                                "example": 98.5
+                              },
+                              "penilaian": {
+                                "type": "integer",
+                                "enum": [1, 2, 3, 4, 5],
+                                "example": 5,
+                                "description": "Rating (1-5 stars)"
+                              }
+                            }
+                          }
+                        },
+                        "aksesMenu": {
+                          "type": "array",
+                          "description": "Daftar menu yang dapat diakses guru",
+                          "items": {
+                            "type": "string",
+                            "enum": ["Dashboard", "Monitoring Pelajar", "Laporan Absensi", "Penilaian Kinerja", "Manajemen Tugas"]
+                          },
+                          "example": ["Dashboard", "Monitoring Pelajar", "Laporan Absensi", "Penilaian Kinerja"]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Guru tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Guru dengan ID USR-003 tidak ditemukan"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/project": {
+      "get": {
+        "tags": ["Project"],
+        "summary": "Daftar Semua Project",
+        "description": "Endpoint untuk mengambil daftar seluruh project dengan filter dan pagination",
+        "operationId": "listProjects",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Halaman hasil (default: 1)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "maximum": 100
+            },
+            "description": "Jumlah item per halaman (default: 10, max: 100)"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["Planning", "Ongoing", "Testing", "Completed", "On Hold"]
+            },
+            "description": "Filter berdasarkan status project"
+          },
+          {
+            "name": "divisi",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter berdasarkan divisi/team (e.g. 'NicaAdmin Team')"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Pencarian berdasarkan nama project"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["tanggalTerbaru", "tanggalTerlama", "namaAsc", "namaDesc"]
+            },
+            "description": "Urutan sorting hasil"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar project berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "idProject": {
+                            "type": "string",
+                            "example": "PRJ-2024-001"
+                          },
+                          "namaProject": {
+                            "type": "string",
+                            "example": "NicaAdmin Dark Design"
+                          },
+                          "deskripsi": {
+                            "type": "string",
+                            "example": "Desain dashboard dark mode untuk AbsensiApp dengan aesthetic NicaAdmin"
+                          },
+                          "divisi": {
+                            "type": "string",
+                            "example": "NicaAdmin Team"
+                          },
+                          "projectManager": {
+                            "type": "object",
+                            "properties": {
+                              "idPM": {
+                                "type": "string",
+                                "example": "USR-002"
+                              },
+                              "namaPM": {
+                                "type": "string",
+                                "example": "Budi Santoso"
+                              }
+                            }
+                          },
+                          "guru": {
+                            "type": "object",
+                            "properties": {
+                              "idGuru": {
+                                "type": "string",
+                                "example": "USR-003"
+                              },
+                              "namaGuru": {
+                                "type": "string",
+                                "example": "Siti Aminah"
+                              }
+                            }
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["Planning", "Ongoing", "Testing", "Completed", "On Hold"],
+                            "example": "Ongoing"
+                          },
+                          "tanggalMulai": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2024-10-01"
+                          },
+                          "tanggalSelesai": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2024-11-15"
+                          },
+                          "progress": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 100,
+                            "example": 45,
+                            "description": "Persentase progres project (0-100%)"
+                          },
+                          "totalPelajar": {
+                            "type": "integer",
+                            "example": 4
+                          },
+                          "pelajarAktif": {
+                            "type": "integer",
+                            "example": 3
+                          },
+                          "prioritas": {
+                            "type": "string",
+                            "enum": ["Low", "Medium", "High", "Critical"],
+                            "example": "High"
+                          },
+                          "teknologi": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "example": ["React", "TypeScript", "Tailwind CSS", "Vite"]
+                          },
+                          "budget": {
+                            "type": "object",
+                            "properties": {
+                              "total": {
+                                "type": "number",
+                                "format": "float",
+                                "example": 50000000.00
+                              },
+                              "terpakai": {
+                                "type": "number",
+                                "format": "float",
+                                "example": 22500000.00
+                              },
+                              "currency": {
+                                "type": "string",
+                                "example": "IDR"
+                              }
+                            }
+                          },
+                          "dokumentasi": {
+                            "type": "string",
+                            "format": "uri",
+                            "example": "https://wiki.absensiiapp.local/projects/nicaadmin-dark"
+                          }
+                        }
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "currentPage": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "totalPages": {
+                          "type": "integer",
+                          "example": 3
+                        },
+                        "totalItems": {
+                          "type": "integer",
+                          "example": 28
+                        },
+                        "itemsPerPage": {
+                          "type": "integer",
+                          "example": 10
+                        },
+                        "hasNextPage": {
+                          "type": "boolean",
+                          "example": true
+                        },
+                        "hasPrevPage": {
+                          "type": "boolean",
+                          "example": false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": ["Project"],
+        "summary": "Buat Project Baru",
+        "description": "Endpoint untuk membuat project baru (hanya untuk Admin dan PM)",
+        "operationId": "createProject",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["namaProject", "divisi", "idPM", "idGuru", "tanggalMulai", "tanggalSelesai"],
+                "properties": {
+                  "namaProject": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 100,
+                    "example": "NicaAdmin Dark Design"
+                  },
+                  "deskripsi": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "example": "Desain dashboard dark mode untuk AbsensiApp"
+                  },
+                  "divisi": {
+                    "type": "string",
+                    "example": "NicaAdmin Team"
+                  },
+                  "idPM": {
+                    "type": "string",
+                    "example": "USR-002",
+                    "description": "ID Project Manager"
+                  },
+                  "idGuru": {
+                    "type": "string",
+                    "example": "USR-003",
+                    "description": "ID Guru Pengawas"
+                  },
+                  "tanggalMulai": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2024-10-01"
+                  },
+                  "tanggalSelesai": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2024-11-15"
+                  },
+                  "prioritas": {
+                    "type": "string",
+                    "enum": ["Low", "Medium", "High", "Critical"],
+                    "default": "Medium",
+                    "example": "High"
+                  },
+                  "teknologi": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": ["React", "TypeScript", "Tailwind CSS"]
+                  },
+                  "budget": {
+                    "type": "number",
+                    "format": "float",
+                    "example": 50000000.00,
+                    "description": "Budget dalam IDR"
+                  },
+                  "daftarPelajarId": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": ["USR-004", "USR-005", "USR-006"],
+                    "description": "ID pelajar yang ditugaskan ke project"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Project berhasil dibuat",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Project berhasil dibuat"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "idProject": {
+                          "type": "string",
+                          "example": "PRJ-2024-001"
+                        },
+                        "namaProject": {
+                          "type": "string",
+                          "example": "NicaAdmin Dark Design"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Data tidak valid"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Hanya Admin dan PM yang bisa membuat project"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Token JWT dari endpoint /auth/login. Format: Authorization: Bearer {token}"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Absensi",
+      "description": "Endpoint untuk manajemen absensi dan check-in pelajar"
+    },
+    {
+      "name": "Guru",
+      "description": "Endpoint untuk data guru dan monitoring pelajar"
+    },
+    {
+      "name": "Project",
+      "description": "Endpoint untuk manajemen project dan task"
+    }
+  ]
+}

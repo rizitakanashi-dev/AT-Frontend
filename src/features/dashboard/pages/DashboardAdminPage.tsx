@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Home,
   FolderKanban,
@@ -10,6 +11,7 @@ import {
   UserPlus,
   Pencil,
   Trash2,
+  X,
 } from 'lucide-react';
 
 interface UserRow {
@@ -26,7 +28,7 @@ interface Divisi {
   jumlahAnggota: number;
 }
 
-const users: UserRow[] = [
+const defaultUsers: UserRow[] = [
   { idUser: 'USR-001', nama: 'Anto Wijaya', role: 'Admin', divisi: 'IT Ops & Security', status: 'Active' },
   { idUser: 'USR-002', nama: 'Budi Santoso', role: 'PM', divisi: 'NicaAdmin Team', status: 'Active' },
   { idUser: 'USR-003', nama: 'Siti Aminah', role: 'Guru', divisi: 'Pendidik', status: 'Active' },
@@ -54,9 +56,38 @@ const roleBadgeStyle: Record<UserRow['role'], string> = {
 };
 
 export default function DashboardAdminPage() {
+  const [users, setUsers] = useState<UserRow[]>(defaultUsers);
   const [autoCheckOut, setAutoCheckOut] = useState(true);
   const [emailNotif, setEmailNotif] = useState(true);
   const [toleransi, setToleransi] = useState(15);
+  const [editingUser, setEditingUser] = useState<UserRow | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  const handleDeleteUser = async (idUser: string) => {
+    try {
+      setUsers(users.filter((u) => u.idUser !== idUser));
+      setShowDeleteConfirm(null);
+      console.log('User deleted:', idUser);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+    }
+  };
+
+  const handleEditUser = async (user: UserRow) => {
+    try {
+      setEditingUser(null);
+      console.log('User updated:', user);
+    } catch (error) {
+      console.error('Error updating user:', error);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/', { replace: true });
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">
@@ -64,12 +95,12 @@ export default function DashboardAdminPage() {
       <aside className="flex w-64 flex-col justify-between border-r border-slate-800 bg-slate-900/50 p-5">
         <div>
           <div className="mb-8 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 font-bold">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 font-bold text-emerald-400">
               A
             </div>
             <span className="text-lg font-bold">
               AbsensiApp
-              <span className="ml-1 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] text-emerald-400 align-middle">
+              <span className="ml-1 rounded bg-emerald-500/20 px-1.5 py-0.5 align-middle text-[10px] text-emerald-400">
                 PRO
               </span>
             </span>
@@ -89,7 +120,7 @@ export default function DashboardAdminPage() {
                 key={label}
                 className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                   active
-                    ? 'bg-emerald-500/10 text-emerald-400 font-medium'
+                    ? 'bg-emerald-500/10 font-medium text-emerald-400'
                     : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
                 }`}
               >
@@ -100,7 +131,10 @@ export default function DashboardAdminPage() {
           </nav>
         </div>
 
-        <button className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10"
+        >
           <LogOut className="h-4 w-4" />
           Logout
         </button>
@@ -188,10 +222,16 @@ export default function DashboardAdminPage() {
                     </td>
                     <td className="py-3">
                       <div className="flex gap-2">
-                        <button className="rounded-lg bg-slate-800/60 p-1.5 text-emerald-400 hover:bg-slate-800">
+                        <button
+                          onClick={() => setEditingUser(user)}
+                          className="rounded-lg bg-slate-800/60 p-1.5 text-emerald-400 hover:bg-slate-800"
+                        >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
-                        <button className="rounded-lg bg-slate-800/60 p-1.5 text-red-400 hover:bg-slate-800">
+                        <button
+                          onClick={() => setShowDeleteConfirm(user.idUser)}
+                          className="rounded-lg bg-slate-800/60 p-1.5 text-red-400 hover:bg-slate-800"
+                        >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -272,11 +312,42 @@ export default function DashboardAdminPage() {
           </div>
         </div>
       </main>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setShowDeleteConfirm(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-2 font-semibold text-red-400">Konfirmasi Penghapusan</h3>
+            <p className="mb-6 text-sm text-slate-400">
+              Apakah Anda yakin ingin menghapus user ini? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-700"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => handleDeleteUser(showDeleteConfirm)}
+                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600"
+              >
+                Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// Komponen toggle switch sederhana
 function ToggleSwitch({
   checked,
   onChange,
