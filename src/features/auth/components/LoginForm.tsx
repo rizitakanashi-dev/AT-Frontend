@@ -31,7 +31,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, errorMsg }) => {
   });
 
   return (
-    <Card className="border-slate-100 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900 rounded-2xl">
+    <Card className="border-slate-200/80 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900 rounded-2xl">
       <CardContent className="p-8">
         {errorMsg && (
           <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/50 dark:text-red-400">
@@ -50,7 +50,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, errorMsg }) => {
               <Input
                 {...register('nama')}
                 placeholder="nama@domain.com"
-                className="pl-10 font-mono text-sm bg-slate-100/70 dark:bg-slate-800"
+                className="pl-10 font-mono text-sm bg-slate-100/70 dark:bg-zinc-800/80 border-slate-200 dark:border-zinc-700/60 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus-visible:ring-emerald-500/50 focus-visible:border-emerald-500"
               />
             </div>
             {errors.nama && <p className="text-xs text-red-500 font-mono">{errors.nama.message}</p>}
@@ -67,7 +67,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, errorMsg }) => {
                 type={showPassword ? 'text' : 'password'}
                 {...register('password')}
                 placeholder="••••••••"
-                className="pl-10 pr-10 font-mono text-sm bg-slate-100/70 dark:bg-slate-800"
+                className="pl-10 pr-10 font-mono text-sm bg-slate-100/70 dark:bg-zinc-800/80 border-slate-200 dark:border-zinc-700/60 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus-visible:ring-emerald-500/50 focus-visible:border-emerald-500"
               />
               <button
                 type="button"
@@ -87,6 +87,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, errorMsg }) => {
               id="rememberMe"
               checked={watch('rememberMe')}
               onCheckedChange={(checked) => setValue('rememberMe', Boolean(checked))}
+              className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 data-[state=checked]:text-zinc-950 border-slate-300 dark:border-zinc-700"
             />
             <Label htmlFor="rememberMe" className="font-mono text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
               Remember me for 30 days
@@ -97,7 +98,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, errorMsg }) => {
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-mono text-sm py-6 rounded-xl flex items-center justify-center space-x-2"
+            className="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold text-sm py-6 rounded-xl flex items-center justify-center space-x-2 shadow-lg shadow-emerald-500/10 transition-all active:scale-[0.99]"
           >
             <span>{isSubmitting ? 'Authenticating...' : 'Login to Workspace_'}</span>
             <ArrowRight className="h-4 w-4" />
