@@ -18,13 +18,9 @@ const LoginPage: React.FC = () => {
     if (token && user) {
       try {
         const userData = JSON.parse(user);
-        const role = userData.Role || userData.role;
+        const role = userData.role || userData.Role;
 
-        if (role === 'Admin') {
-          navigate('/admin/dashboard', { replace: true });
-        } else {
-          navigate('/anggota/dashboard', { replace: true });
-        }
+        navigate(rolePath(role), { replace: true });
       } catch (e) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -34,8 +30,17 @@ const LoginPage: React.FC = () => {
 
   const handleLogin = async (values: LoginFormValues) => {
     setErrorMsg('');
-    console.log('Login dengan:', values);
-    navigate('/dashboard', { replace: true });
+    const api = await loginUser({ nama: values.nama, password: values.password });
+    localStorage.setItem('token', api.token);
+    localStorage.setItem('user', JSON.stringify(api));
+    navigate(rolePath(api.role), { replace: true });
+  };
+
+  const rolePath = (role: string) => {
+    if (role === 'Admin') return '/admin';
+    if (role === 'PM') return '/pm';
+    if (role === 'Guru') return '/guru';
+    return '/anggota';
   };
 
   return (
