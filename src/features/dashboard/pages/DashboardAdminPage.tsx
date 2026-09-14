@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Home,
@@ -13,7 +13,6 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import api from '@/lib/api';
 
 interface UserRow {
   idUser: string;
@@ -34,6 +33,7 @@ const defaultUsers: UserRow[] = [
   { idUser: 'USR-002', nama: 'Budi Santoso', role: 'PM', divisi: 'NicaAdmin Team', status: 'Active' },
   { idUser: 'USR-003', nama: 'Siti Aminah', role: 'Guru', divisi: 'Pendidik', status: 'Active' },
   { idUser: 'USR-004', nama: 'Ahmad Fauzi', role: 'Pelajar', divisi: 'Siswa Magang', status: 'Active' },
+  { idUser: 'USR-005', nama: 'Zaskia Amalia', role: 'Pelajar', divisi: 'Siswa Magang', status: 'Inactive' },
 ];
 
 const divisiList: Divisi[] = [
@@ -66,11 +66,7 @@ export default function DashboardAdminPage() {
 
   const handleDeleteUser = async (idUser: string) => {
     try {
-      // Call backend to delete user
-      // await api.delete(`/v1/guru/${idUser}`); // or appropriate endpoint
-      
-      // Update local state
-      setUsers(users.filter(u => u.idUser !== idUser));
+      setUsers(users.filter((u) => u.idUser !== idUser));
       setShowDeleteConfirm(null);
       console.log('User deleted:', idUser);
     } catch (error) {
@@ -80,9 +76,6 @@ export default function DashboardAdminPage() {
 
   const handleEditUser = async (user: UserRow) => {
     try {
-      // Call backend to update user
-      // await api.put(`/v1/guru/${user.idUser}`, user);
-      
       setEditingUser(null);
       console.log('User updated:', user);
     } catch (error) {
@@ -98,15 +91,16 @@ export default function DashboardAdminPage() {
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">
+      {/* Sidebar */}
       <aside className="flex w-64 flex-col justify-between border-r border-slate-800 bg-slate-900/50 p-5">
         <div>
           <div className="mb-8 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 font-bold">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 font-bold text-emerald-400">
               A
             </div>
             <span className="text-lg font-bold">
               AbsensiApp
-              <span className="ml-1 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] text-emerald-400 align-middle">
+              <span className="ml-1 rounded bg-emerald-500/20 px-1.5 py-0.5 align-middle text-[10px] text-emerald-400">
                 PRO
               </span>
             </span>
@@ -126,7 +120,7 @@ export default function DashboardAdminPage() {
                 key={label}
                 className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                   active
-                    ? 'bg-emerald-500/10 text-emerald-400 font-medium'
+                    ? 'bg-emerald-500/10 font-medium text-emerald-400'
                     : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
                 }`}
               >
@@ -146,7 +140,9 @@ export default function DashboardAdminPage() {
         </button>
       </aside>
 
+      {/* Main content */}
       <main className="flex-1 p-8">
+        {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold">Dashboard DBA</h1>
@@ -169,6 +165,7 @@ export default function DashboardAdminPage() {
           </div>
         </div>
 
+        {/* User Management Table */}
         <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900/50 p-6">
           <div className="mb-4 flex items-center justify-between">
             <div>
@@ -246,7 +243,9 @@ export default function DashboardAdminPage() {
           </div>
         </div>
 
+        {/* Bottom grid: Divisi & System Settings */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Divisi & Departemen */}
           <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-semibold">Divisi & Departemen</h2>
@@ -270,6 +269,7 @@ export default function DashboardAdminPage() {
             </div>
           </div>
 
+          {/* System Settings */}
           <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
             <h2 className="mb-4 font-semibold">System Settings</h2>
             <div className="space-y-4">
