@@ -49,11 +49,10 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [checkInForm, setCheckInForm] = useState({ project: '', target: '' });
-  
+
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Fetch projects on mount
   useEffect(() => {
     const fetchProjects = async () => {
       try {
@@ -90,13 +89,12 @@ export default function DashboardPage() {
       const payload = {
         idProject: selectedProject,
         target: checkInForm.target,
-        idStatus: 2, // On Progress
+        idStatus: 2,
       };
-      
+
       const response = await api.post('/v1/absen/masuk', payload);
       console.log('Check-in berhasil:', response.data);
-      
-      // Add new log entry
+
       const newLog: WorkLog = {
         id: workLogs.length + 1,
         time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
@@ -105,7 +103,7 @@ export default function DashboardPage() {
         status: 'Completed',
       };
       setWorkLogs([newLog, ...workLogs]);
-      
+
       setShowCheckInModal(false);
       setCheckInForm({ project: '', target: '' });
     } catch (err) {
@@ -127,11 +125,11 @@ export default function DashboardPage() {
       <aside className="flex w-64 flex-col justify-between border-r border-slate-800 bg-slate-900/50 p-5">
         <div>
           <div className="mb-8 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 font-bold">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 font-bold text-emerald-400">
               A
             </div>
             <span className="text-lg font-bold">
-              AbsensiApp <span className="ml-1 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] text-emerald-400 align-middle">PRO</span>
+              AbsensiApp <span className="ml-1 rounded bg-emerald-500/20 px-1.5 py-0.5 align-middle text-[10px] text-emerald-400">PRO</span>
             </span>
           </div>
 
@@ -152,7 +150,7 @@ export default function DashboardPage() {
                   onClick={() => navigate(path)}
                   className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                     active
-                      ? 'bg-emerald-500/10 text-emerald-400 font-medium'
+                      ? 'bg-emerald-500/10 font-medium text-emerald-400'
                       : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
                   }`}
                 >
@@ -197,7 +195,7 @@ export default function DashboardPage() {
         </div>
 
         {error && (
-          <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/50 p-3 text-sm text-red-400">
+          <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-400">
             {error}
           </div>
         )}
