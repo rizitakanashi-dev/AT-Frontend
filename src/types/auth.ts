@@ -4,10 +4,10 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  Token: string;
-  Refresh_Token: string;
-  Nama: string;
-  Role: string;
+  token: string;
+  refresh_Token: string;
+  nama: string;
+  role: string;
 }
 
 
