@@ -1,369 +1,267 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  Home,
-  FolderKanban,
-  ClipboardCheck,
-  History,
-  LogOut,
-  Search,
-  Bell,
-  Settings,
-  Clock,
-  CheckCircle2,
-  X,
-} from 'lucide-react';
-import api from '@/lib/api';
+import { useState, useEffect, useCallback } from 'react';
+import { Clock, CheckCircle2, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
+import DashboardLayout from '../../../components/DashboardLayout';
+import { getProjects, getRekapAbsensi, postAbsenMasuk, postAbsenPulang } from '../absensiService';
+import { AbsenRekapDTO, ProjectDTO } from '../../../types/absensi';
+import { todayISO } from '../absensiService';
 
-interface Project {
-  id: number;
-  nama: string;
+interface CheckInState {
+  idProject: number | null;
+  target: string;
 }
-
-interface WorkLog {
-  id: number;
-  time: string;
-  title: string;
-  desc: string;
-  status: string;
-}
-
-const navItems = [
-  { label: 'Home', icon: Home, path: '/dashboard' },
-  { label: 'Projet', icon: FolderKanban, path: '/dashboard/projet' },
-  { label: 'Absensi', icon: ClipboardCheck, path: '/dashboard/absensi' },
-  { label: 'Riwayat', icon: History, path: '/dashboard/riwayat' },
-];
-
-const defaultLogs: WorkLog[] = [
-  { id: 1, time: '08:00 AM', title: 'Check-in', desc: 'Hadir tepat waktu di Lab TI', status: 'Completed' },
-  { id: 2, time: '11:30 AM', title: 'Work Log', desc: 'Membuat UI/Mockup untuk AbsensiApp', status: 'In Progress' },
-  { id: 3, time: '03:00 PM', title: 'Work Log', desc: 'Finalisasi core features & testing', status: 'Pending' },
-];
 
 export default function DashboardPage() {
-  const [selectedProject, setSelectedProject] = useState<number | null>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [workLogs, setWorkLogs] = useState<WorkLog[]>(defaultLogs);
+  const [projects, setProjects] = useState<ProjectDTO[]>([]);
+  const [todayRekap, setTodayRekap] = useState<AbsenRekapDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showCheckInModal, setShowCheckInModal] = useState(false);
-  const [checkInForm, setCheckInForm] = useState({ project: '', target: '' });
+  const [errorMsg, setErrorMsg] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [modal, setModal] = useState<'in' | 'out' | null>(null);
+  const [form, setForm] = useState<CheckInState>({ idProject: null, target: '' });
 
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        setLoading(true);
-        const response = await api.get<Project[]>('/v1/project');
-        setProjects(response.data || []);
-        if (response.data && response.data.length > 0) {
-          setSelectedProject(response.data[0].id);
-        }
-      } catch (err) {
-        setError('Gagal memuat data project');
-        console.error('Error fetching projects:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProjects();
+  const load = useCallback(async () => {
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const [proj, rekap] = await Promise.all([
+        getProjects(),
+        getRekapAbsensi(todayISO()),
+      ]);
+      setProjects(proj);
+      setTodayRekap(rekap);
+      // Default the project selector to the user's first available project.
+      setForm((f) => ({ ...f, idProject: f.idProject ?? proj[0]?.id ?? null }));
+    } catch {
+      setErrorMsg('Gagal memuat data dashboard dari server.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/', { replace: true });
-  };
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const myToday = todayRekap.filter((r) => !r.jamPulang);
 
   const handleCheckIn = async () => {
-    if (!selectedProject || !checkInForm.target) {
-      setError('Harap isi semua field');
-      return;
-    }
-
+    if (!form.idProject || !form.target.trim()) return;
+    setSubmitting(true);
+    setErrorMsg('');
     try {
-      const payload = {
-        idProject: selectedProject,
-        target: checkInForm.target,
-        idStatus: 2,
-      };
-
-      const response = await api.post('/v1/absen/masuk', payload);
-      console.log('Check-in berhasil:', response.data);
-
-      const newLog: WorkLog = {
-        id: workLogs.length + 1,
-        time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-        title: 'Check-in',
-        desc: checkInForm.target,
-        status: 'Completed',
-      };
-      setWorkLogs([newLog, ...workLogs]);
-
-      setShowCheckInModal(false);
-      setCheckInForm({ project: '', target: '' });
-    } catch (err) {
-      setError('Gagal melakukan check-in');
-      console.error('Check-in error:', err);
+      await postAbsenMasuk({
+        idProject: form.idProject,
+        target: form.target.trim(),
+        idStatus: 1,
+      });
+      setModal(null);
+      setForm((f) => ({ ...f, target: '' }));
+      await load();
+    } catch {
+      setErrorMsg('Gagal melakukan check-in.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
-        <p>Loading...</p>
-      </div>
-    );
-  }
+  const handleCheckOut = async () => {
+    if (myToday.length === 0) return;
+    setSubmitting(true);
+    setErrorMsg('');
+    try {
+      const active = myToday[myToday.length - 1];
+      await postAbsenPulang({
+        idAbsensi: active.idAbsensi,
+        idTarget: active.idTarget,
+        idStatus: 2,
+      });
+      setModal(null);
+      await load();
+    } catch {
+      setErrorMsg('Gagal melakukan check-out.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const attendedToday = todayRekap.length > 0;
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-white">
-      <aside className="flex w-64 flex-col justify-between border-r border-slate-800 bg-slate-900/50 p-5">
-        <div>
-          <div className="mb-8 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 font-bold text-emerald-400">
-              A
+    <DashboardLayout title="Dashboard Pelajar" subtitle="Ringkasan aktivitas harian kamu.">
+      {loading ? (
+        <div className="flex items-center justify-center py-20" style={{ color: '#8A8F99' }}>
+          Memuat dashboard...
+        </div>
+      ) : (
+        <>
+          {errorMsg && (
+            <div className="mb-4 rounded-xl p-4 text-sm" style={{ backgroundColor: 'rgba(255,77,77,0.08)', color: '#FF6B6B', border: '1px solid rgba(255,77,77,0.2)' }}>
+              {errorMsg}
             </div>
-            <span className="text-lg font-bold">
-              AbsensiApp <span className="ml-1 rounded bg-emerald-500/20 px-1.5 py-0.5 align-middle text-[10px] text-emerald-400">PRO</span>
-            </span>
+          )}
+
+          {/* Stat Cards */}
+          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="rounded-xl p-4" style={{ backgroundColor: '#1E2024', border: '1px solid #2D3036' }}>
+              <p className="mb-2 text-xs font-medium" style={{ color: '#8A8F99' }}>Project Aktif</p>
+              <select
+                value={form.idProject ?? ''}
+                onChange={(e) => setForm((f) => ({ ...f, idProject: Number(e.target.value) || null }))}
+                className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+                style={{ backgroundColor: '#121316', color: '#FFFFFF', border: '1px solid #2D3036' }}
+              >
+                {projects.length === 0 && <option value="">Tidak ada project</option>}
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.nama}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="stem-tile">
+              <div className="stem-icon-chip" style={{ backgroundColor: 'rgba(16,185,129,0.12)' }}>
+                <Clock className="h-5 w-5" style={{ color: '#10B981' }} />
+              </div>
+              <div>
+                <p className="text-xs font-medium" style={{ color: '#8A8F99' }}>Catatan Hari Ini</p>
+                <p className="text-xl font-bold">{todayRekap.length} Aktivitas</p>
+              </div>
+            </div>
+
+            <div className="stem-tile">
+              <div className="stem-icon-chip" style={{ backgroundColor: 'rgba(32,230,183,0.12)' }}>
+                <CheckCircle2 className="h-5 w-5" style={{ color: '#20E6B7' }} />
+              </div>
+              <div>
+                <p className="text-xs font-medium" style={{ color: '#8A8F99' }}>Status Kehadiran</p>
+                <p className="text-xl font-bold">{attendedToday ? (myToday.length ? 'Check-in' : 'Hadir') : 'Belum Check In'}</p>
+              </div>
+            </div>
           </div>
 
-          <div className="mb-8 flex items-center gap-3 rounded-xl bg-slate-800/50 p-3">
-            <div className="h-9 w-9 rounded-full bg-linear-to-br from-emerald-400 to-blue-500" />
-            <div>
-              <p className="text-sm font-semibold">Ahmad Fauzi</p>
-              <p className="text-xs text-slate-400">Pelajar</p>
+          {/* Today's records */}
+          <div className="rounded-xl p-6" style={{ backgroundColor: '#1E2024', border: '1px solid #2D3036' }}>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold">Daily Work Log</h2>
+                <p className="text-xs" style={{ color: '#8A8F99' }}>
+                  {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                </p>
+              </div>
+              {attendedToday && (
+                <span className="rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: '#10B981' }}>
+                  Checked In
+                </span>
+              )}
             </div>
-          </div>
 
-          <nav className="space-y-1">
-            {navItems.map(({ label, icon: Icon, path }) => {
-              const active = location.pathname === path;
-              return (
+            <div className="mb-6 space-y-3">
+              {todayRekap.length === 0 ? (
+                <p className="py-4 text-center text-sm" style={{ color: '#8A8F99' }}>
+                  Belum ada aktivitas hari ini. Tekan Check In untuk memulai.
+                </p>
+              ) : (
+                todayRekap.map((log) => (
+                  <div key={log.idAbsensi} className="flex gap-4 text-sm">
+                    <span className="w-20 shrink-0" style={{ color: '#10B981' }}>{log.jamMasuk || '-'}</span>
+                    <div>
+                      <p className="font-medium">{log.project || 'Project'}</p>
+                      <p className="text-xs" style={{ color: '#8A8F99' }}>{log.target || '-'}</p>
+                      {log.jamPulang && <p className="text-xs" style={{ color: '#8A8F99' }}>Keluar: {log.jamPulang}</p>}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex items-center justify-between border-t pt-4" style={{ borderColor: '#2D3036' }}>
+              <p className="text-sm" style={{ color: '#8A8F99' }}>
+                {myToday.length ? 'Check Out untuk mengakhiri aktivitas kerja hari ini.' : 'Tekan Check In untuk memulai hari kerja.'}
+              </p>
+              <div className="flex gap-2">
+                {myToday.length > 0 && (
+                  <button onClick={() => setModal('out')} className="stem-btn stem-btn-amber">
+                    <ArrowUpFromLine className="h-4 w-4" />
+                    Check Out
+                  </button>
+                )}
                 <button
-                  key={label}
-                  onClick={() => navigate(path)}
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                    active
-                      ? 'bg-emerald-500/10 font-medium text-emerald-400'
-                      : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
-                  }`}
+                  onClick={() => { setErrorMsg(''); setModal('in'); }}
+                  disabled={myToday.length > 0}
+                  className="stem-btn stem-btn-primary"
                 >
-                  <Icon className="h-4 w-4" />
-                  {label}
+                  <ArrowDownToLine className="h-4 w-4" />
+                  Check In
                 </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10"
-        >
-          <LogOut className="h-4 w-4" />
-          Logout
-        </button>
-      </aside>
-
-      <main className="flex-1 p-8">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">Dashboard Pelajar</h1>
-            <p className="text-xs text-slate-500">NicaAdmin Dark Dashboard</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-              <input
-                placeholder="Cari projek / pelajar..."
-                className="w-64 rounded-lg bg-slate-800/60 py-2 pl-9 pr-3 text-sm placeholder:text-slate-500 focus:outline-none"
-              />
-            </div>
-            <button className="rounded-lg bg-slate-800/60 p-2 hover:bg-slate-800">
-              <Bell className="h-4 w-4" />
-            </button>
-            <button className="rounded-lg bg-slate-800/60 p-2 hover:bg-slate-800">
-              <Settings className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        {error && (
-          <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-400">
-            {error}
-          </div>
-        )}
-
-        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-            <p className="mb-2 text-xs text-slate-500">PILIH PROJEK</p>
-            <select
-              value={selectedProject || ''}
-              onChange={(e) => setSelectedProject(Number(e.target.value))}
-              className="w-full rounded-lg bg-slate-800/60 px-3 py-2 text-sm focus:outline-none"
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nama}
-                </option>
-              ))}
-            </select>
-            <p className="mt-2 text-[11px] text-slate-500">
-              Projek saat ini di bawah pengawasan Guru SMK Attaufiq
-            </p>
-          </div>
-
-          <div className="flex items-center gap-4 rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-            <div className="rounded-lg bg-emerald-500/10 p-2.5">
-              <Clock className="h-5 w-5 text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">AKUMULASI JAM KERJA</p>
-              <p className="text-xl font-bold">07 Jam 45 Menit</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4 rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-            <div className="rounded-lg bg-emerald-500/10 p-2.5">
-              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">PERSENTASE HADIR</p>
-              <p className="text-xl font-bold">
-                98.5% <span className="text-xs font-normal text-emerald-400">Sangat Baik</span>
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="font-semibold">Daily Work Log & Aktivitas</h2>
-              <p className="text-xs text-slate-500">Kamis, 24 Oktober 2024</p>
-            </div>
-            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs text-emerald-400">
-              Status: checked-in
-            </span>
-          </div>
-
-          <p className="mb-2 text-xs text-slate-500">DESKRIPSI PEKERJAAN HARI INI</p>
-          <div className="mb-6 rounded-lg bg-slate-800/40 p-3 text-sm text-slate-300">
-            Mendesain layout dashboard untuk 3 user role: Student, PM, dan Guru dengan aesthetic
-            NicaAdmin Dark Mode. Mengimplementasikan data table, grid pemantauan, dan floating
-            action bar check-in.
-          </div>
-
-          <p className="mb-3 text-xs text-slate-500">RIWAYAT LOG MASUK/AKTIVITAS HARI INI</p>
-          <div className="mb-6 space-y-3">
-            {workLogs.map((log) => (
-              <div key={log.id} className="flex gap-4 text-sm">
-                <span className="w-20 shrink-0 text-emerald-400">{log.time}</span>
-                <div>
-                  <p className="font-medium">{log.title}</p>
-                  <p className="text-xs text-slate-500">{log.desc}</p>
-                </div>
               </div>
-            ))}
-          </div>
-
-          <div className="flex items-center justify-between border-t border-slate-800 pt-4">
-            <div>
-              <p className="text-sm font-medium">Konfirmasi Absensi Kehadiran</p>
-              <p className="text-xs text-slate-500">
-                Pastikan tekan CI saat tiba dan CO setelah selesai bekerja
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowCheckInModal(true)}
-                className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400"
-              >
-                CI (Check-In)
-              </button>
-              <button className="flex items-center gap-1.5 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-700">
-                CO (Check-Out)
-              </button>
             </div>
           </div>
-        </div>
-      </main>
 
-      {/* Check-In Modal */}
-      {showCheckInModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={() => setShowCheckInModal(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-start justify-between">
-              <div>
-                <h3 className="font-semibold">Check-In Absensi</h3>
-                <p className="text-xs text-slate-500">Masukkan detail pekerjaan Anda</p>
-              </div>
-              <button
-                onClick={() => setShowCheckInModal(false)}
-                className="rounded-lg p-1 text-slate-500 hover:bg-slate-800 hover:text-white"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-xs text-slate-400">Project</label>
+          {/* Check-In Modal */}
+          {modal === 'in' && (
+            <div className="stem-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setModal(null)}>
+              <div className="stem-pop stem-surface w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+                <h3 className="mb-1 text-lg font-semibold">Check In</h3>
+                <p className="mb-4 text-sm" style={{ color: '#8A8F99' }}>Masukkan target kerja hari ini.</p>
+                <label className="mb-1 block text-xs font-medium" style={{ color: '#8A8F99' }}>Project</label>
                 <select
-                  value={checkInForm.project || selectedProject || ''}
-                  onChange={(e) => setCheckInForm({ ...checkInForm, project: e.target.value })}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-800/40 px-3 py-2 text-sm text-white focus:outline-none"
+                  value={form.idProject ?? ''}
+                  onChange={(e) => setForm((f) => ({ ...f, idProject: Number(e.target.value) || null }))}
+                  className="mb-4 w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+                  style={{ backgroundColor: '#121316', color: '#FFFFFF', border: '1px solid #2D3036' }}
                 >
-                  <option value="">Pilih Project</option>
+                  {projects.length === 0 && <option value="">Tidak ada project</option>}
                   {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nama}
-                    </option>
+                    <option key={p.id} value={p.id}>{p.nama}</option>
                   ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs text-slate-400">Deskripsi Pekerjaan</label>
+                <label className="mb-1 block text-xs font-medium" style={{ color: '#8A8F99' }}>Target Kerja</label>
                 <textarea
-                  value={checkInForm.target}
-                  onChange={(e) => setCheckInForm({ ...checkInForm, target: e.target.value })}
-                  placeholder="Masukkan target/deskripsi pekerjaan Anda..."
-                  className="w-full rounded-lg border border-slate-700 bg-slate-800/40 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none"
+                  value={form.target}
+                  onChange={(e) => setForm((f) => ({ ...f, target: e.target.value }))}
+                  placeholder="Deskripsi target kerja..."
+                  className="w-full rounded-xl p-3 text-sm focus:outline-none"
+                  style={{ backgroundColor: '#121316', color: '#FFFFFF', border: '1px solid #2D3036' }}
                   rows={3}
                 />
+                <div className="mt-4 flex justify-end gap-2">
+                  <button onClick={() => setModal(null)} className="stem-btn stem-btn-ghost">
+                    Batal
+                  </button>
+                  <button
+                    onClick={handleCheckIn}
+                    disabled={submitting || !form.target.trim() || !form.idProject}
+                    className="stem-btn stem-btn-primary"
+                  >
+                    {submitting ? 'Mengirim...' : 'Konfirmasi'}
+                  </button>
+                </div>
               </div>
             </div>
+          )}
 
-            <div className="mt-6 flex justify-end gap-2 border-t border-slate-800 pt-4">
-              <button
-                onClick={() => setShowCheckInModal(false)}
-                className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-700"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleCheckIn}
-                className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400"
-              >
-                Konfirmasi Check-In
-              </button>
+          {/* Check-Out Modal */}
+          {modal === 'out' && (
+            <div className="stem-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setModal(null)}>
+              <div className="stem-pop stem-surface w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+                <h3 className="mb-1 text-lg font-semibold">Check Out</h3>
+                <p className="mb-4 text-sm" style={{ color: '#8A8F99' }}>Konfirmasi check out hari ini?</p>
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => setModal(null)} className="stem-btn stem-btn-ghost">
+                    Batal
+                  </button>
+                  <button
+                    onClick={handleCheckOut}
+                    disabled={submitting}
+                    className="stem-btn stem-btn-amber"
+                  >
+                    {submitting ? 'Mengirim...' : 'Check Out'}
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
-    </div>
+    </DashboardLayout>
   );
 }

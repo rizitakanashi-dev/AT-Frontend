@@ -1,140 +1,223 @@
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, FolderKanban, ClipboardCheck, History, LogOut } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import {
-  getRekapAbsensi,
-  postAbsenMasuk,
-  postAbsenPulang,
-} from '../absensiService';
-import { AbsenRekapDTO } from '../../../types/absensi';
-
-const navItems = [
-  { label: 'Home', icon: Home, path: '/dashboard' },
-  { label: 'Projet', icon: FolderKanban, path: '/dashboard/projet' },
-  { label: 'Absensi', icon: ClipboardCheck, path: '/dashboard/absensi' },
-  { label: 'Riwayat', icon: History, path: '/dashboard/riwayat' },
-];
+import { useState, useEffect, useCallback } from 'react';
+import { ClipboardCheck, Clock, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
+import DashboardLayout from '../../../components/DashboardLayout';
+import { getRekapAbsensi, postAbsenMasuk, postAbsenPulang, getProjects } from '../absensiService';
+import { AbsenRekapDTO, ProjectDTO } from '../../../types/absensi';
+import { todayISO } from '../absensiService';
 
 export default function AbsensiPage() {
   const [rekapList, setRekapList] = useState<AbsenRekapDTO[]>([]);
+  const [projects, setProjects] = useState<ProjectDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string>('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [showCheckIn, setShowCheckIn] = useState(false);
+  const [showCheckOut, setShowCheckOut] = useState(false);
+  const [target, setTarget] = useState('');
+  const [idProject, setIdProject] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchRekap = useCallback(async () => {
+    try {
+      const rekap = await getRekapAbsensi(todayISO());
+      setRekapList(rekap);
+    } catch {
+      setErrorMsg('Gagal memuat rekap absensi.');
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setLoading(true);
       try {
-        const rekap = await getRekapAbsensi();
-        if (!cancelled) setRekapList(rekap);
-      } catch (err) {
-        if (!cancelled) {
-          setErrorMsg('Gagal memuat rekap absensi dari server.');
-        }
+        const [rekap, proj] = await Promise.all([getRekapAbsensi(todayISO()), getProjects()]);
+        if (cancelled) return;
+        setRekapList(rekap);
+        setProjects(proj);
+        setIdProject(proj[0]?.id ?? null);
+      } catch {
+        if (!cancelled) setErrorMsg('Gagal memuat rekap absensi.');
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    return () => { cancelled = true; };
+  }, [fetchRekap]);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-400">
-        Memuat rekap absensi...
-      </div>
-    );
-  }
+  const openCheckIn = () => { setErrorMsg(''); setTarget(''); setShowCheckIn(true); };
+  const openCheckOut = () => { setErrorMsg(''); setShowCheckOut(true); };
+
+  const handleCheckIn = async () => {
+    if (!idProject || !target.trim()) return;
+    setSubmitting(true);
+    setErrorMsg('');
+    try {
+      await postAbsenMasuk({ idProject, target: target.trim(), idStatus: 1 });
+      setShowCheckIn(false);
+      setTarget('');
+      await fetchRekap();
+    } catch {
+      setErrorMsg('Gagal melakukan check-in.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCheckOut = async () => {
+    if (rekapList.length === 0) return;
+    const latest = rekapList[rekapList.length - 1];
+    if (!latest.jamPulang) {
+      setSubmitting(true);
+      setErrorMsg('');
+      try {
+        await postAbsenPulang({ idAbsensi: latest.idAbsensi, idTarget: latest.idTarget, idStatus: 2 });
+        setShowCheckOut(false);
+        await fetchRekap();
+      } catch {
+        setErrorMsg('Gagal melakukan check-out.');
+      } finally {
+        setSubmitting(false);
+      }
+    }
+  };
+
+  const activeCount = rekapList.filter((r) => !r.jamPulang).length;
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-white">
-      <aside className="flex w-64 flex-col justify-between border-r border-slate-800 bg-slate-900/50 p-5">
-        <div>
-          <div className="mb-8 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 font-bold">
-              A
-            </div>
-            <span className="font-bold">
-              AbsensiApp <span className="ml-1 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] text-emerald-400 align-middle">PRO</span>
-            </span>
-          </div>
-
-          <nav className="space-y-1">
-            {navItems.map(({ label, icon: Icon, path }) => {
-              const active = location.pathname === path;
-              return (
-                <button
-                  key={label}
-                  onClick={() => navigate(path)}
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                    active
-                      ? 'bg-emerald-500/10 text-emerald-400 font-medium'
-                      : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10"
-        >
-          <LogOut className="h-4 w-4" />
-          Logout
+    <DashboardLayout title="Absensi" subtitle="Rekap kehadiran dan aktivitas harian.">
+      {/* Action Buttons */}
+      <div className="mb-6 flex gap-3">
+        <button onClick={openCheckIn} disabled={activeCount > 0} className="stem-btn stem-btn-primary">
+          <ArrowDownToLine className="h-4 w-4" />
+          Check In
         </button>
-      </aside>
+        <button onClick={openCheckOut} disabled={activeCount === 0} className="stem-btn stem-btn-amber">
+          <ArrowUpFromLine className="h-4 w-4" />
+          Check Out
+        </button>
+      </div>
 
-      <main className="flex-1 p-8">
-        <h1 className="text-xl font-bold">Absensi</h1>
-        <p className="mt-1 text-xs text-slate-500">Rekap kehadiran kamu.</p>
+      {errorMsg && (
+        <div className="mb-4 rounded-xl p-4 text-sm" style={{ backgroundColor: 'rgba(255,77,77,0.08)', color: '#FF6B6B', border: '1px solid rgba(255,77,77,0.2)' }}>
+          {errorMsg}
+        </div>
+      )}
 
-        {errorMsg && (
-          <div className="mt-4 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-400">
-            {errorMsg}
+      {/* Rekap Table */}
+      <div className="overflow-hidden rounded-xl" style={{ backgroundColor: '#1E2024', border: '1px solid #2D3036' }}>
+        {loading ? (
+          <div className="flex items-center justify-center py-20" style={{ color: '#8A8F99' }}>
+            Memuat rekap absensi...
           </div>
-        )}
-
-        <div className="mt-6 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/50">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-800 text-xs text-slate-400 uppercase">
-              <tr>
-                <th className="px-4 py-3">Tanggal</th>
-                <th className="px-4 py-3">Project</th>
-                <th className="px-4 py-3">Target</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Jam Masuk</th>
-                <th className="px-4 py-3">Jam Pulang</th>
+        ) : rekapList.length === 0 ? (
+          <div className="p-12 text-center">
+            <ClipboardCheck className="mx-auto mb-3 h-10 w-10" style={{ color: '#8A8F99' }} />
+            <p style={{ color: '#8A8F99' }}>Belum ada data absensi hari ini.</p>
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left" style={{ borderColor: '#2D3036' }}>
+                <th className="px-5 py-3 text-xs font-medium" style={{ color: '#8A8F99' }}>Tanggal</th>
+                <th className="px-5 py-3 text-xs font-medium" style={{ color: '#8A8F99' }}>Nama</th>
+                <th className="px-5 py-3 text-xs font-medium" style={{ color: '#8A8F99' }}>Project</th>
+                <th className="px-5 py-3 text-xs font-medium" style={{ color: '#8A8F99' }}>Status</th>
+                <th className="px-5 py-3 text-xs font-medium" style={{ color: '#8A8F99' }}>Jam Masuk</th>
+                <th className="px-5 py-3 text-xs font-medium" style={{ color: '#8A8F99' }}>Jam Pulang</th>
               </tr>
             </thead>
             <tbody>
-              {rekapList.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
-                    Belum ada data absensi.
+              {rekapList.map((row) => (
+                <tr key={row.idAbsensi} className="border-b last:border-0" style={{ borderColor: '#2D3036' }}>
+                  <td className="px-5 py-3">{row.tanggal}</td>
+                  <td className="px-5 py-3">{row.nama}</td>
+                  <td className="px-5 py-3" style={{ color: '#8A8F99' }}>{row.project || '-'}</td>
+                  <td className="px-5 py-3">
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs"
+                      style={
+                        row.jamPulang
+                          ? { backgroundColor: 'rgba(16,185,129,0.12)', color: '#10B981' }
+                          : { backgroundColor: 'rgba(255,159,67,0.12)', color: '#FF9F43' }
+                      }
+                    >
+                      <Clock className="h-3 w-3" />
+                      {row.jamPulang ? 'Selesai' : 'On Progress'}
+                    </span>
                   </td>
+                  <td className="px-5 py-3" style={{ color: '#8A8F99' }}>{row.jamMasuk || '-'}</td>
+                  <td className="px-5 py-3" style={{ color: '#8A8F99' }}>{row.jamPulang || '-'}</td>
                 </tr>
-              ) : (
-                rekapList.map((row) => (
-                  <tr key={row.idAbsensi} className="border-b border-slate-800/60 last:border-0">
-                    <td className="px-4 py-3">{row.tanggal}</td>
-                    <td className="px-4 py-3">{row.nama}</td>
-                    <td className="px-4 py-3">{row.divisi}</td>
-                    <td className="px-4 py-3">{row.project ?? '-'}</td>
-                    <td className="px-4 py-3">{row.target ?? '-'}</td>
-                    <td className="px-4 py-3">{row.status}</td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
+        )}
+      </div>
+
+      {/* Check-In Modal */}
+      {showCheckIn && (
+        <div className="stem-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowCheckIn(false)}>
+          <div className="stem-pop stem-surface w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-1 text-lg font-semibold">Check In</h3>
+            <p className="mb-4 text-sm" style={{ color: '#8A8F99' }}>Pilih project dan isi target kerja hari ini.</p>
+            <label className="mb-1 block text-xs font-medium" style={{ color: '#8A8F99' }}>Project</label>
+            <select
+              value={idProject ?? ''}
+              onChange={(e) => setIdProject(Number(e.target.value) || null)}
+              className="mb-4 w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+              style={{ backgroundColor: '#121316', color: '#FFFFFF', border: '1px solid #2D3036' }}
+            >
+              {projects.length === 0 && <option value="">Tidak ada project</option>}
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.nama}</option>
+              ))}
+            </select>
+            <label className="mb-1 block text-xs font-medium" style={{ color: '#8A8F99' }}>Target Kerja</label>
+            <textarea
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              placeholder="Deskripsi target kerja..."
+              className="w-full rounded-xl p-3 text-sm focus:outline-none"
+              style={{ backgroundColor: '#121316', color: '#FFFFFF', border: '1px solid #2D3036' }}
+              rows={3}
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setShowCheckIn(false)} className="stem-btn stem-btn-ghost">
+                Batal
+              </button>
+              <button
+                onClick={handleCheckIn}
+                disabled={submitting || !target.trim() || !idProject}
+                className="stem-btn stem-btn-primary"
+              >
+                {submitting ? 'Mengirim...' : 'Konfirmasi'}
+              </button>
+            </div>
+          </div>
         </div>
-      </main>
-    </div>
+      )}
+
+      {/* Check-Out Modal */}
+      {showCheckOut && (
+        <div className="stem-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowCheckOut(false)}>
+          <div className="stem-pop stem-surface w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-1 text-lg font-semibold">Check Out</h3>
+            <p className="mb-4 text-sm" style={{ color: '#8A8F99' }}>Konfirmasi check out hari ini?</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowCheckOut(false)} className="stem-btn stem-btn-ghost">
+                Batal
+              </button>
+              <button
+                onClick={handleCheckOut}
+                disabled={submitting}
+                className="stem-btn stem-btn-amber"
+              >
+                {submitting ? 'Mengirim...' : 'Check Out'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </DashboardLayout>
   );
 }
