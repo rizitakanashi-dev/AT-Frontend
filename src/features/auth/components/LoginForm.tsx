@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
 
 import { loginSchema, LoginFormValues } from '../schemas/loginSchema';
 
@@ -22,89 +20,73 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, errorMsg }) => {
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { nama: '', password: '', rememberMe: false },
+    defaultValues: { nama: '', password: '' },
   });
 
   return (
-    <Card className="border-slate-200/80 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900 rounded-2xl">
-      <CardContent className="p-8">
-        {errorMsg && (
-          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/50 dark:text-red-400">
-            {errorMsg}
-          </div>
-        )}
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      {errorMsg && (
+        <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: 'rgba(255,77,77,0.08)', color: '#FF6B6B', border: '1px solid rgba(255,77,77,0.2)' }}>
+          {errorMsg}
+        </div>
+      )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          {/* Email / Nama Field */}
-          <div className="space-y-2">
-            <Label className="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">
-              Email Address / Nama
-            </Label>
-            <div className="relative flex items-center">
-              <Mail className="absolute left-3.5 h-4 w-4 text-slate-400 pointer-events-none z-10" />
-              <Input
-                {...register('nama')}
-                placeholder="nama@domain.com"
-                className="pl-10 font-mono text-sm bg-slate-100/70 dark:bg-zinc-800/80 border-slate-200 dark:border-zinc-700/60 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus-visible:ring-emerald-500/50 focus-visible:border-emerald-500"
-              />
-            </div>
-            {errors.nama && <p className="text-xs text-red-500 font-mono">{errors.nama.message}</p>}
-          </div>
+      {/* Nama Field */}
+      <div className="space-y-2">
+        <Label className="text-xs font-medium" style={{ color: '#8A8F99' }}>
+          Nama
+        </Label>
+        <div className="relative flex items-center">
+          <User className="absolute left-3.5 h-4 w-4 pointer-events-none z-10" style={{ color: '#8A8F99' }} />
+          <Input
+            {...register('nama')}
+            placeholder="Nama pengguna"
+            className="h-11 pl-10 text-sm"
+            style={{ backgroundColor: '#1E2024', color: '#FFFFFF', border: '1px solid #2D3036' }}
+          />
+        </div>
+        {errors.nama && <p className="text-xs" style={{ color: '#FF6B6B' }}>{errors.nama.message}</p>}
+      </div>
 
-          {/* Password Field */}
-          <div className="space-y-2">
-            <Label className="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">
-              Password
-            </Label>
-            <div className="relative flex items-center">
-              <Lock className="absolute left-3.5 h-4 w-4 text-slate-400 pointer-events-none z-10" />
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                {...register('password')}
-                placeholder="••••••••"
-                className="pl-10 pr-10 font-mono text-sm bg-slate-100/70 dark:bg-zinc-800/80 border-slate-200 dark:border-zinc-700/60 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus-visible:ring-emerald-500/50 focus-visible:border-emerald-500"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            {errors.password && <p className="text-xs text-red-500 font-mono">{errors.password.message}</p>}
-          </div>
-
-          {/* Checkbox Remember Me */}
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="rememberMe"
-              checked={watch('rememberMe')}
-              onCheckedChange={(checked) => setValue('rememberMe', Boolean(checked))}
-              className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 data-[state=checked]:text-zinc-950 border-slate-300 dark:border-zinc-700"
-            />
-            <Label htmlFor="rememberMe" className="font-mono text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
-              Remember me for 30 days
-            </Label>
-          </div>
-
-          {/* Submit Button */}
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold text-sm py-6 rounded-xl flex items-center justify-center space-x-2 shadow-lg shadow-emerald-500/10 transition-all active:scale-[0.99]"
+      {/* Password Field */}
+      <div className="space-y-2">
+        <Label className="text-xs font-medium" style={{ color: '#8A8F99' }}>
+          Password
+        </Label>
+        <div className="relative flex items-center">
+          <Lock className="absolute left-3.5 h-4 w-4 pointer-events-none z-10" style={{ color: '#8A8F99' }} />
+          <Input
+            type={showPassword ? 'text' : 'password'}
+            {...register('password')}
+            placeholder="••••••••"
+            className="h-11 pl-10 pr-10 text-sm"
+            style={{ backgroundColor: '#1E2024', color: '#FFFFFF', border: '1px solid #2D3036' }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            className="absolute right-3 transition-colors" style={{ color: '#8A8F99' }}
+            tabIndex={-1}
           >
-            <span>{isSubmitting ? 'Authenticating...' : 'Login to Workspace_'}</span>
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+        {errors.password && <p className="text-xs" style={{ color: '#FF6B6B' }}>{errors.password.message}</p>}
+      </div>
+
+      {/* Submit Button */}
+      <Button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full py-6 text-sm font-semibold"
+        style={{ backgroundColor: '#10B981', color: '#121316', borderRadius: '0.75rem' }}
+      >
+        <span>{isSubmitting ? 'Memproses...' : 'Masuk'}</span>
+        <ArrowRight className="h-4 w-4" />
+      </Button>
+    </form>
   );
 };

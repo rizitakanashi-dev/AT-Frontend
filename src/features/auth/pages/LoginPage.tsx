@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loginUser } from '../../absensi/services/authService';
+import { loginUser, TOKEN_KEY, USER_KEY, clearSession } from '../../absensi/services/authService';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { LoginForm } from '../components/LoginForm';
 import { CodePreview } from '../components/CodePreview';
 import { LoginFormValues } from '../schemas/loginSchema';
+import { roleHomePath } from '../../../lib/roles';
 
 const LoginPage: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string>('');
@@ -12,56 +13,53 @@ const LoginPage: React.FC = () => {
 
   // Redirect otomatis jika pengguna sudah memiliki session token
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
+    const token = localStorage.getItem(TOKEN_KEY);
+    const user = localStorage.getItem(USER_KEY);
 
     if (token && user) {
       try {
         const userData = JSON.parse(user);
-        const role = userData.role || userData.Role;
-
-        navigate(rolePath(role), { replace: true });
-      } catch (e) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        if (userData.role) {
+          navigate(roleHomePath(userData.role), { replace: true });
+        }
+      } catch {
+        clearSession();
       }
     }
   }, [navigate]);
 
   const handleLogin = async (values: LoginFormValues) => {
     setErrorMsg('');
-    const api = await loginUser({ nama: values.nama, password: values.password });
-    localStorage.setItem('token', api.token);
-    localStorage.setItem('user', JSON.stringify(api));
-    navigate(rolePath(api.role), { replace: true });
-  };
-
-  const rolePath = (role: string) => {
-    if (role === 'Admin') return '/admin';
-    if (role === 'PM') return '/pm';
-    if (role === 'Guru') return '/guru';
-    return '/anggota';
+    try {
+      const loginResponse = await loginUser({ nama: values.nama, password: values.password });
+      localStorage.setItem(TOKEN_KEY, loginResponse.token);
+      localStorage.setItem(USER_KEY, JSON.stringify(loginResponse));
+      navigate(roleHomePath(loginResponse.role), { replace: true });
+    } catch (err) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      setErrorMsg(axiosErr?.response?.data?.message ?? 'Nama atau password salah. Silakan coba lagi.');
+    }
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 text-slate-900 dark:bg-zinc-950 dark:text-white">
-      <header className="flex items-center justify-between border-b border-dashed border-slate-200 dark:border-slate-800 px-8 py-4">
-        <span className="text-xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">
-          binarycodingspace
-        </span>
+    <div className="min-h-screen w-full" style={{ backgroundColor: '#121316', color: '#FFFFFF' }}>
+      <header className="flex items-center justify-between border-b px-8 py-4" style={{ borderColor: '#2D3036' }}>
+        <span className="text-lg font-bold">binarycodingspace</span>
         <ThemeToggle />
       </header>
 
-      <main className="grid min-h-[calc(100vh-65px)] grid-cols-1 lg:grid-cols-2">
-        <div className="flex flex-col justify-center px-8 py-12 sm:px-16 lg:px-24">
+      <main className="grid min-h-[calc(100vh-65px)] grid-cols-1 items-center gap-8 px-8 py-12 sm:px-16 lg:grid-cols-2 lg:px-24">
+        <div className="mx-auto w-full max-w-md">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight">Sign In</h1>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              Access your coding workspace.
+            <h1 className="text-3xl font-bold tracking-tight">Masuk ke Akun</h1>
+            <p className="mt-2 text-sm" style={{ color: '#8A8F99' }}>
+              Catat kehadiran dan aktivitas kerjamu.
             </p>
           </div>
 
-          <LoginForm onSubmit={handleLogin} errorMsg={errorMsg} />
+          <div className="stem-surface p-8">
+            <LoginForm onSubmit={handleLogin} errorMsg={errorMsg} />
+          </div>
         </div>
 
         <CodePreview />

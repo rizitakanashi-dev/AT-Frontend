@@ -4,55 +4,42 @@ import { Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export const ThemeToggle: React.FC = () => {
-  const { theme, setTheme } = useTheme();
+  const { setTheme } = useTheme();
 
-  const toggleTheme = async (event: React.MouseEvent<HTMLButtonElement>) => {
-    const isDark = theme === 'dark';
-    const nextTheme = isDark ? 'light' : 'dark';
-
-    // Fallback jika browser tidak mendukung View Transitions
+  const toggleTheme = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (!('startViewTransition' in document)) {
-      setTheme(nextTheme);
+      setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
       return;
     }
 
     const x = event.clientX;
     const y = event.clientY;
-
     const endRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y)
+      Math.max(y, window.innerHeight - y),
     );
 
-    // Jalankan View Transition
     const transition = (document as any).startViewTransition(() => {
-      // 1. Ubah class DOM secara langsung untuk instan snapshot
-      if (isDark) {
-        document.documentElement.classList.remove('dark');
-      } else {
-        document.documentElement.classList.add('dark');
-      }
-      // 2. Sync state React
-      setTheme(nextTheme);
+      // next-themes applies the class via React render; the snapshot
+      // is taken AFTER this callback returns, so the new state is visible.
+      setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
     });
 
-    // Tunggu hingga pseudo-element animasi disiapkan oleh browser
-    await transition.ready;
-
-    // Animasi clip-path
-    document.documentElement.animate(
-      {
-        clipPath: [
-          `circle(0px at ${x}px ${y}px)`,
-          `circle(${endRadius}px at ${x}px ${y}px)`,
-        ],
-      },
-      {
-        duration: 500,
-        easing: 'ease-in-out',
-        pseudoElement: '::view-transition-new(root)',
-      }
-    );
+    transition.ready.then(() => {
+      document.documentElement.animate(
+        {
+          clipPath: [
+            `circle(0px at ${x}px ${y}px)`,
+            `circle(${endRadius}px at ${x}px ${y}px)`,
+          ],
+        },
+        {
+          duration: 500,
+          easing: 'ease-in-out',
+          pseudoElement: '::view-transition-new(root)',
+        },
+      );
+    });
   };
 
   return (

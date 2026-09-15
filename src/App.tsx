@@ -1,39 +1,71 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Suspense, lazy } from 'react';
 import LoginPage from './features/auth/pages/LoginPage';
 import ProtectedRoute from './components/ProtectedRoute';
-import DashboardPage from './features/dashboard/pages/DashboardPage';
-import ProjetPage from './features/dashboard/pages/ProjetPage';
-import AbsensiPage from './features/dashboard/pages/AbsensiPage';
-import RiwayatPage from './features/dashboard/pages/RiwayatPage';
-import DashboardPMPage from './features/dashboard/pages/DashboardPMPage';
-import DashboardGuruPage from './features/dashboard/pages/DashboardGuruPage';
-import DashboardAdminPage from './features/dashboard/pages/DashboardAdminPage';
 import UnauthorizedPage from './features/dashboard/pages/UnauthorizedPage';
+
+// Code-split the role pages so each role loads only its own bundle.
+const DashboardPage = lazy(() => import('./features/dashboard/pages/DashboardPage'));
+const ProjetPage = lazy(() => import('./features/dashboard/pages/ProjetPage'));
+const AbsensiPage = lazy(() => import('./features/dashboard/pages/AbsensiPage'));
+const RiwayatPage = lazy(() => import('./features/dashboard/pages/RiwayatPage'));
+const DashboardAdminPage = lazy(() => import('./features/dashboard/pages/DashboardAdminPage'));
+const DashboardGuruPage = lazy(() => import('./features/dashboard/pages/DashboardGuruPage'));
+const DashboardPMPage = lazy(() => import('./features/dashboard/pages/DashboardPMPage'));
+const UsersPage = lazy(() => import('./features/dashboard/pages/UsersPage'));
+const ProjectsPage = lazy(() => import('./features/dashboard/pages/ProjectsPage'));
+
+function PageLoader() {
+  return (
+    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#121316', color: '#8A8F99' }}>
+      Memuat...
+    </div>
+  );
+}
 
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/unauthorized" element={<UnauthorizedPage />} />
-        <Route
-          element={<ProtectedRoute allowedRoles={['Admin', 'PM', 'Guru']} />}
-        >
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/dashboard/projet" element={<ProjetPage />} />
-          <Route path="/dashboard/absensi" element={<AbsensiPage />} />
-          <Route path="/dashboard/riwayat" element={<RiwayatPage />} />
-        </Route>
-        <Route element={<ProtectedRoute allowedRoles={['PM']} />}>
-          <Route path="/pm" element={<DashboardPMPage />} />
-        </Route>
-        <Route element={<ProtectedRoute allowedRoles={['Guru']} />}>
-          <Route path="/guru" element={<DashboardGuruPage />} />
-        </Route>
-        <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>
-          <Route path="/admin" element={<DashboardAdminPage />} />
-        </Route>
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Public */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+
+          {/* Anggota (Student) — protected */}
+          <Route element={<ProtectedRoute allowedRoles={['Anggota']} />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/dashboard/project" element={<ProjetPage />} />
+            <Route path="/dashboard/absensi" element={<AbsensiPage />} />
+            <Route path="/dashboard/riwayat" element={<RiwayatPage />} />
+          </Route>
+
+          {/* Admin — executive overview + full CRUD */}
+          <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>
+            <Route path="/admin" element={<DashboardAdminPage />} />
+            <Route path="/admin/projects" element={<ProjectsPage />} />
+            <Route path="/admin/users" element={<UsersPage />} />
+          </Route>
+
+          {/* Guru */}
+          <Route element={<ProtectedRoute allowedRoles={['Guru']} />}>
+            <Route path="/guru" element={<DashboardGuruPage />} />
+            <Route path="/guru/projects" element={<ProjectsPage />} />
+            <Route path="/guru/users" element={<UsersPage />} />
+          </Route>
+
+          {/* PM */}
+          <Route element={<ProtectedRoute allowedRoles={['PM']} />}>
+            <Route path="/pm" element={<DashboardPMPage />} />
+            <Route path="/pm/projects" element={<ProjectsPage />} />
+            <Route path="/pm/users" element={<UsersPage />} />
+          </Route>
+
+          {/* Redirect any leftover path to home */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

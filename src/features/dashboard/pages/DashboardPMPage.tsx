@@ -1,192 +1,164 @@
-import { useState, useMemo } from 'react';
-import {
-  FolderKanban,
-  ClipboardCheck,
-  LogOut,
-  Search,
-  Bell,
-  Settings,
-  ArrowUpDown,
-  UserPlus,
-} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users, FolderKanban, UserCheck } from 'lucide-react';
+import DashboardLayout from '../../../components/DashboardLayout';
+import api from '../../../lib/api';
+import { getProjectAnggota, getProjects, getRekapAbsensi, todayISO } from '../absensiService';
+import { ProjectDTO, UserDTO } from '../../../types/absensi';
 
-interface TeamMember {
-  id: number;
-  nama: string;
-  progress: number;
-  absen: 'Hadir' | 'Pending';
-  jamKerja: string;
+interface TeamRow {
+  anggota: UserDTO;
+  projectName: string;
+  hadir: boolean;
+  jamMasuk?: string;
 }
 
-const initialTeam: TeamMember[] = [
-  { id: 1, nama: 'Ahmad Fauzi', progress: 85, absen: 'Hadir', jamKerja: '08 Hrs / Daily' },
-  { id: 2, nama: 'Fathur Rahman', progress: 65, absen: 'Hadir', jamKerja: '08 Hrs / Daily' },
-  { id: 3, nama: 'Siti Rahma', progress: 40, absen: 'Pending', jamKerja: '08 Hrs / Daily' },
-  { id: 4, nama: 'Rian Hidayat', progress: 92, absen: 'Hadir', jamKerja: '08 Hrs / Daily' },
-  { id: 5, nama: 'Zaskia Amalia', progress: 20, absen: 'Pending', jamKerja: '08 Hrs / Daily' },
-];
-
-const navItems = [
-  { label: 'Projet', icon: FolderKanban, active: true },
-  { label: 'Absen', icon: ClipboardCheck, active: false },
-];
+function matchName(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
 
 export default function DashboardPMPage() {
-  const [team] = useState<TeamMember[]>(initialTeam);
-  const [sortDesc, setSortDesc] = useState(true);
+  const [members, setMembers] = useState<TeamRow[]>([]);
+  const [projects, setProjects] = useState<ProjectDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const sortedTeam = useMemo(() => {
-    return [...team].sort((a, b) =>
-      sortDesc ? b.progress - a.progress : a.progress - b.progress
-    );
-  }, [team, sortDesc]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [assignments, proj, rekap, roster] = await Promise.all([
+          getProjectAnggota(),
+          getProjects(),
+          getRekapAbsensi(todayISO()),
+          api.get<UserDTO[]>('/Anggota').then((r) => r.data || []),
+        ]);
+        let rows: TeamRow[] = [];
+        for (const pa of assignments) {
+          const member = roster.find((u) => u.id === pa.idUser);
+          if (!member) continue;
+          const logs = rekap.filter((r) => matchName(r.nama, member.nama));
+          const active = logs.find((r) => !r.jamPulang);
+          const present = logs.find((r) => r.jamMasuk);
+          rows.push({
+            anggota: member,
+            projectName: pa.project || pa.idProject.toString(),
+            hadir: logs.length > 0,
+            jamMasuk: active?.jamMasuk ?? present?.jamMasuk,
+          });
+        }
+        if (!cancelled) {
+          setProjects(proj);
+          setMembers(rows);
+        }
+      } catch {
+        if (!cancelled) setErrorMsg('Gagal memuat data tim dari server.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const hadir = members.filter((m) => m.hadir).length;
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-white">
-      <aside className="flex w-64 flex-col justify-between border-r border-slate-800 bg-slate-900/50 p-5">
-        <div>
-          <div className="mb-8 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 font-bold">
-              A
-            </div>
-            <span className="text-lg font-bold">
-              AbsensiApp
-              <span className="ml-1 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] text-emerald-400 align-middle">
-                PRO
-              </span>
-            </span>
-          </div>
-
-          <div className="mb-8 flex items-center gap-3 rounded-xl bg-slate-800/50 p-3">
-            <div className="h-9 w-9 rounded-full bg-linear-to-br from-emerald-400 to-blue-500" />
-            <div>
-              <p className="text-sm font-semibold">Budi Santoso</p>
-              <p className="text-xs text-emerald-400">Project Manager</p>
-            </div>
-          </div>
-
-          <nav className="space-y-1">
-            {navItems.map(({ label, icon: Icon, active }) => (
-              <button
-                key={label}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                  active
-                    ? 'bg-emerald-500/10 text-emerald-400 font-medium'
-                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </button>
-            ))}
-          </nav>
+    <DashboardLayout title="Dashboard PM" subtitle="Pantau kehadiran anggota project.">
+      {loading ? (
+        <div className="flex items-center justify-center py-20" style={{ color: '#8A8F99' }}>
+          Memuat data tim...
         </div>
-
-        <button className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10">
-          <LogOut className="h-4 w-4" />
-          Logout
-        </button>
-      </aside>
-
-      <main className="flex-1 p-8">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">Dashboard Project Manager</h1>
-            <p className="text-xs text-slate-500">NicaAdmin Dark Dashboard</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-              <input
-                placeholder="Cari projek / pelajar..."
-                className="w-64 rounded-lg bg-slate-800/60 py-2 pl-9 pr-3 text-sm placeholder:text-slate-500 focus:outline-none"
-              />
+      ) : (
+        <>
+          {errorMsg && (
+            <div className="mb-4 rounded-xl p-4 text-sm" style={{ backgroundColor: 'rgba(255,77,77,0.08)', color: '#FF6B6B', border: '1px solid rgba(255,77,77,0.2)' }}>
+              {errorMsg}
             </div>
-            <button className="rounded-lg bg-slate-800/60 p-2 hover:bg-slate-800">
-              <Bell className="h-4 w-4" />
-            </button>
-            <button className="rounded-lg bg-slate-800/60 p-2 hover:bg-slate-800">
-              <Settings className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+          )}
 
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="font-semibold">Team Progress</h2>
-              <p className="text-xs text-slate-500">
-                Pantau performa harian dan absensi anggota project Anda.
+          {/* Stat cards */}
+          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="stem-tile">
+              <div className="stem-icon-chip" style={{ backgroundColor: 'rgba(32,230,183,0.12)' }}>
+                <FolderKanban className="h-5 w-5" style={{ color: '#20E6B7' }} />
+              </div>
+              <div>
+                <p className="text-xs font-medium" style={{ color: '#8A8F99' }}>Total Project</p>
+                <p className="text-xl font-bold">{projects.length}</p>
+              </div>
+            </div>
+            <div className="stem-tile">
+              <div className="stem-icon-chip" style={{ backgroundColor: 'rgba(16,185,129,0.12)' }}>
+                <Users className="h-5 w-5" style={{ color: '#10B981' }} />
+              </div>
+              <div>
+                <p className="text-xs font-medium" style={{ color: '#8A8F99' }}>Total Anggota</p>
+                <p className="text-xl font-bold">{members.length}</p>
+              </div>
+            </div>
+            <div className="stem-tile">
+              <div className="stem-icon-chip" style={{ backgroundColor: 'rgba(255,159,67,0.12)' }}>
+                <UserCheck className="h-5 w-5" style={{ color: '#FF9F43' }} />
+              </div>
+              <div>
+                <p className="text-xs font-medium" style={{ color: '#8A8F99' }}>Hadir Hari Ini</p>
+                <p className="text-xl font-bold">{hadir}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="rounded-xl p-6" style={{ backgroundColor: '#1E2024', border: '1px solid #2D3036' }}>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold">Anggota Project</h2>
+                <p className="text-xs" style={{ color: '#8A8F99' }}>Kehadiran harian per anggota.</p>
+              </div>
+            </div>
+
+            {members.length === 0 ? (
+              <p className="py-8 text-center text-sm" style={{ color: '#8A8F99' }}>
+                Belum ada anggota yang ditugaskan ke project.
               </p>
-            </div>
-            <button
-              onClick={() => setSortDesc((prev) => !prev)}
-              className="flex items-center gap-1.5 rounded-lg bg-slate-800/60 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
-            >
-              <ArrowUpDown className="h-3.5 w-3.5" />
-              Urutkan: {sortDesc ? 'Progres Tertinggi' : 'Progres Terendah'}
-            </button>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left" style={{ borderColor: '#2D3036' }}>
+                      <th className="pb-3 text-xs font-medium" style={{ color: '#8A8F99' }}>Nama</th>
+                      <th className="pb-3 text-xs font-medium" style={{ color: '#8A8F99' }}>Project</th>
+                      <th className="pb-3 text-xs font-medium" style={{ color: '#8A8F99' }}>Absen</th>
+                      <th className="pb-3 text-xs font-medium" style={{ color: '#8A8F99' }}>Jam Masuk</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {members.map((member) => (
+                      <tr key={member.anggota.id} className="border-b last:border-0" style={{ borderColor: '#2D3036' }}>
+                        <td className="py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 rounded-full" style={{ backgroundColor: '#10B981' }} />
+                            {member.anggota.nama}
+                          </div>
+                        </td>
+                        <td className="py-3" style={{ color: '#8A8F99' }}>{member.projectName}</td>
+                        <td className="py-3">
+                          <span className="rounded-full px-2.5 py-1 text-xs" style={
+                            member.hadir
+                              ? { backgroundColor: 'rgba(16,185,129,0.12)', color: '#10B981' }
+                              : { backgroundColor: 'rgba(255,159,67,0.12)', color: '#FF9F43' }
+                          }>
+                            {member.hadir ? 'Hadir' : 'Belum'}
+                          </span>
+                        </td>
+                        <td className="py-3" style={{ color: '#8A8F99' }}>{member.jamMasuk || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-800 text-left text-xs text-slate-500">
-                  <th className="pb-3 font-medium">Nama</th>
-                  <th className="pb-3 font-medium">Progress</th>
-                  <th className="pb-3 font-medium">Absen</th>
-                  <th className="pb-3 font-medium">Jam Kerja</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedTeam.map((member) => (
-                  <tr key={member.id} className="border-b border-slate-800/50">
-                    <td className="py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-full bg-linear-to-br from-emerald-400 to-blue-500" />
-                        {member.nama}
-                      </div>
-                    </td>
-                    <td className="py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-32 overflow-hidden rounded-full bg-slate-800">
-                          <div
-                            className="h-full rounded-full bg-emerald-400"
-                            style={{ width: `${member.progress}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-slate-400">{member.progress}%</span>
-                      </div>
-                    </td>
-                    <td className="py-3">
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs ${
-                          member.absen === 'Hadir'
-                            ? 'bg-emerald-500/10 text-emerald-400'
-                            : 'bg-amber-500/10 text-amber-400'
-                        }`}
-                      >
-                        {member.absen}
-                      </span>
-                    </td>
-                    <td className="py-3 text-slate-400">{member.jamKerja}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-xs text-slate-500">
-              Total {team.length} Anggota Aktif Terdaftar dalam Project.
-            </p>
-            <button className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400">
-              <UserPlus className="h-4 w-4" />
-              Tambah Anggota
-            </button>
-          </div>
-        </div>
-      </main>
-    </div>
+        </>
+      )}
+    </DashboardLayout>
   );
 }
