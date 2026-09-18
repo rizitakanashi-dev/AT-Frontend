@@ -1,33 +1,18 @@
-import api from '../../../lib/api';
-import { LoginRequest, LoginResponse } from '../../../types/auth';
+import api from '@/lib/api';
+import { clearSession } from '@/lib/session';
+import type { LoginRequest, LoginResponse } from '@/types/auth';
 
-// Key name shared across the app (api.ts, ProtectedRoute, LoginPage, DashboardLayout)
-export const TOKEN_KEY = 'token';
-export const USER_KEY = 'user';
+export { TOKEN_KEY, USER_KEY, clearSession } from '@/lib/session';
 
-export const loginUser = async (
-  credentials: LoginRequest
-): Promise<LoginResponse> => {
-  const response = await api.post<LoginResponse>('/v1/auth/login', credentials);
-  return response.data;
-};
+export async function loginUser(credentials: LoginRequest): Promise<LoginResponse> {
+  const { data } = await api.post<LoginResponse>('/v1/auth/login', credentials);
+  return data;
+}
 
-/**
- * Logout: call the backend (best-effort, fire-and-forget), then purge local
- * session state unconditionally so the client is never left half-signed-out.
- */
-export const logoutUser = async (): Promise<void> => {
+export async function logoutUser(): Promise<void> {
   try {
     await api.post('/v1/auth/logout');
-  } catch {
-    // Local session is purged regardless of the network result.
   } finally {
     clearSession();
   }
-};
-
-/** Remove every auth artifact (JWT + stored user) from local storage. */
-export const clearSession = (): void => {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
-};
+}

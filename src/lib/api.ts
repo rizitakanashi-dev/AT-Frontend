@@ -1,95 +1,74 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
-import { TOKEN_KEY, USER_KEY, clearSession } from "../features/absensi/services/authService";
-import { LoginResponse } from "../types/auth";
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { clearSession, getSession, saveSession } from './session';
+import type { LoginResponse } from '@/types/auth';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
+  baseURL: (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, ''),
+  timeout: 15000,
+  headers: { 'Content-Type': 'application/json' },
 });
 
-/** Mark a request as already-refreshed so we never loop on a second 401. */
-interface RetriableConfig extends InternalAxiosRequestConfig {
-  _retry?: boolean;
-}
-
-api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem(TOKEN_KEY);
-
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
+interface RetriableConfig extends InternalAxiosRequestConfig { _retry?: boolean }
 let refreshPromise: Promise<string | null> | null = null;
 
-/**
- * Exchange the stored refresh token for a fresh access token.
- * Single-flight: concurrent 401s share one refresh call.
- * Returns the new access token, or null if refresh failed.
- */
-async function tryRefreshToken(): Promise<string | null> {
+api.interceptors.request.use((config) => {
+  const token = getSession()?.token;
+  if (token && !config.url?.endsWith('/login')) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+async function refreshToken(): Promise<string | null> {
   if (refreshPromise) return refreshPromise;
-
-  refreshPromise = (async () => {
-    const stored = JSON.parse(localStorage.getItem(USER_KEY) || "null") as LoginResponse | null;
-    const refreshToken = stored?.refresh_Token;
-
-    if (!refreshToken) return null;
-
-    try {
-      const { data } = await axios.post<LoginResponse>(
-        `${api.defaults.baseURL}/v1/auth/refresh`,
-        { refreshToken },
-        { headers: { "Content-Type": "application/json" } }
-      );
-
-      localStorage.setItem(TOKEN_KEY, data.token);
-      localStorage.setItem(USER_KEY, JSON.stringify(data));
-      return data.token;
-    } catch {
-      return null;
-    } finally {
-      refreshPromise = null;
-    }
-  })();
-
+  const session = getSession();
+  if (!session?.refresh_Token) return null;
+  refreshPromise = axios.post<LoginResponse>(`${api.defaults.baseURL}/v1/auth/refresh`, {
+    refreshToken: session.refresh_Token,
+  }, { timeout: 15000 }).then(({ data }) => {
+    // A late refresh must not restore a session after logout or another login.
+    if (getSession()?.refresh_Token !== session.refresh_Token) return null;
+    saveSession(data);
+    return data.token;
+  }).catch(() => null).finally(() => { refreshPromise = null; });
   return refreshPromise;
 }
 
-api.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const config = error.config as RetriableConfig | undefined;
-    const status = error.response?.status;
-
-    // Only attempt refresh once per request, and never on the refresh call itself.
-    if (status === 401 && config && !config._retry && !config.url?.includes("/refresh")) {
+api.interceptors.response.use((response) => response, async (error: AxiosError) => {
+  const config = error.config as RetriableConfig | undefined;
+  const isLogin = config?.url?.endsWith('/login');
+  if (error.response?.status === 401 && config && !isLogin) {
+    if (!config._retry) {
       config._retry = true;
-
-      const newToken = await tryRefreshToken();
-      if (newToken) {
-        config.headers = config.headers ?? {};
-        config.headers.Authorization = `Bearer ${newToken}`;
+      const token = await refreshToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
         return api(config);
       }
-
-      // Refresh failed or unavailable — the session is dead.
-      clearSession();
-      if (!window.location.pathname.startsWith("/login")) {
-        window.location.href = "/login";
-      }
-      return Promise.reject(error);
     }
-
-    return Promise.reject(error);
+    clearSession();
+    if (window.location.pathname !== '/login') window.location.replace('/login');
   }
-);
+  return Promise.reject(error);
+});
+
+export async function fetcher<T>(url: string): Promise<T> {
+  const { data } = await api.get<T>(url);
+  if (typeof data === 'string') throw new Error('Respons API tidak valid. Periksa alamat backend.');
+  return data;
+}
+
+export function errorMessage(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status;
+    if (status === 401) return 'Nama pengguna atau kata sandi tidak sesuai.';
+    if (status === 403) return 'Anda tidak memiliki izin untuk tindakan ini.';
+    if (status === 429) return 'Terlalu banyak permintaan. Tunggu sebentar, lalu coba lagi.';
+    if (!error.response || status === 502 || status === 503 || status === 504 || (status === 500 && !error.response.data)) return 'Backend belum dapat dihubungi. Periksa koneksi dan coba lagi.';
+    const data = error.response.data;
+    if (data && typeof data === 'object' && typeof data.message === 'string') return data.message;
+    if (status === 404) return 'Data atau endpoint tidak ditemukan.';
+    return 'Permintaan belum berhasil. Silakan coba lagi.';
+  }
+  return error instanceof Error ? error.message : 'Terjadi kesalahan. Silakan coba lagi.';
+}
 
 export default api;
