@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useSWRConfig } from 'swr';
-import { LayoutDashboard, FolderKanban, ClipboardCheck, History, Users, LogOut, Menu, Target, Building2, CalendarDays, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, ClipboardCheck, History, Users, LogOut, Menu, Target, Building2, CalendarDays, ChevronRight, Rocket } from 'lucide-react';
 import { toast } from 'sonner';
 import { logoutUser } from '@/features/absensi/services/authService';
 import { getSession } from '@/lib/session';
@@ -19,16 +19,22 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
   const role = normalizeRole(session?.role || '');
   const home = roleHomePath(role);
   const member = role === 'Anggota';
+  const devops = role === 'DevOps';
   const [menuOpen, setMenuOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { mutate } = useSWRConfig();
-  const nav = [
+  const nav = devops ? [
+    { label: 'Antrian hosting', icon: Rocket, path: home },
+  ] : [
     { label: 'Ringkasan', icon: LayoutDashboard, path: home },
     { label: member ? 'Absensi saya' : 'Rekap kehadiran', icon: ClipboardCheck, path: `${home}/absensi` },
     { label: member ? 'Proyek saya' : 'Proyek', icon: FolderKanban, path: `${home}/${member ? 'project' : 'projects'}` },
     { label: 'Target kerja', icon: Target, path: `${home}/targets` },
+    ...(member ? [{ label: 'Hosting saya', icon: Rocket, path: `${home}/hosting` }] : []),
+    ...(role === 'PM' ? [{ label: 'Review hosting', icon: Rocket, path: `${home}/hosting` }] : []),
+    ...(role === 'Admin' ? [{ label: 'Hosting', icon: Rocket, path: `${home}/hosting` }] : []),
     ...(member ? [{ label: 'Riwayat', icon: History, path: `${home}/riwayat` }] : [{ label: 'Pengguna', icon: Users, path: `${home}/users` }]),
     ...(role === 'Admin' ? [{ label: 'Divisi & referensi', icon: Building2, path: '/admin/divisions' }] : []),
   ];

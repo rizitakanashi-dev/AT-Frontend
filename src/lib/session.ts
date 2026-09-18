@@ -12,7 +12,7 @@ export function getSession(): LoginResponse | null {
     if (!value || typeof value !== 'object') return null;
     const session = value as Partial<LoginResponse>;
     if (typeof session.nama !== 'string' || typeof session.role !== 'string' ||
-      !['Admin', 'PM', 'Guru', 'Anggota', 'Pelajar'].includes(session.role)) return null;
+      !['Admin', 'PM', 'Guru', 'Anggota', 'DevOps', 'Pelajar'].includes(session.role)) return null;
     return { token, nama: session.nama, role: session.role, refresh_Token: session.refresh_Token || '' };
   } catch {
     return null;
@@ -20,7 +20,7 @@ export function getSession(): LoginResponse | null {
 }
 
 export function saveSession(session: LoginResponse) {
-  if (typeof session.token !== 'string' || !session.token || typeof session.nama !== 'string' || !session.nama || !['Admin', 'PM', 'Guru', 'Anggota', 'Pelajar'].includes(session.role)) throw new Error('Respons login tidak valid.');
+  if (typeof session.token !== 'string' || !session.token || typeof session.nama !== 'string' || !session.nama || !['Admin', 'PM', 'Guru', 'Anggota', 'DevOps', 'Pelajar'].includes(session.role)) throw new Error('Respons login tidak valid.');
   // Preserve the existing bearer-token contract; HttpOnly sessions require a backend change.
   localStorage.setItem(TOKEN_KEY, session.token);
   localStorage.setItem(USER_KEY, JSON.stringify(session));
