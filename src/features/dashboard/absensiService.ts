@@ -40,6 +40,7 @@ export const updateProject = (id: number, nama: string) => api.put(`/v1/project/
 export const deleteProject = (id: number) => api.delete(`/v1/project/${id}`);
 export const getProjectAnggota = () => fetcher<ProjectAnggotaDTO[]>('/v1/project-anggota');
 export const getGuruUsers = () => fetcher<UserDTO[]>('/v1/guru');
+export const getDevOpsUsers = () => fetcher<UserDTO[]>('/DevOps');
 export const addProjectMember = (user: number, project: number) => api.post('/v1/project-anggota', { user, project });
 export const removeProjectMember = (id: number) => api.delete(`/v1/project-anggota/${id}`);
 export const createTarget = (data: TargetInput) => api.post('/v1/target', data);
@@ -47,13 +48,40 @@ export const updateTarget = (id: number, data: Omit<TargetInput, 'idUser'>) => a
 export const deleteTarget = (id: number) => api.delete(`/v1/target/${id}`);
 
 export async function getUsers() {
-  const [anggota, guru, pm] = await Promise.all([
-    fetcher<UserDTO[]>('/Anggota'), getGuruUsers(), fetcher<UserDTO[]>('/PM'),
+  const [anggota, guru, pm, devops] = await Promise.all([
+    fetcher<UserDTO[]>('/Anggota'), getGuruUsers(), fetcher<UserDTO[]>('/PM'), getDevOpsUsers(),
   ]);
-  return [...anggota, ...guru, ...pm];
+  return [...anggota, ...guru, ...pm, ...devops];
+}
+
+const userEndpoints: Record<string, { create: string; manage?: string }> = {
+  Anggota: { create: '/Anggota/register' },
+  PM: { create: '/PM/register' },
+  Guru: { create: '/v1/guru', manage: '/v1/guru' },
+  DevOps: { create: '/DevOps/register', manage: '/DevOps' },
+};
+
+export function canManageUser(role: string) {
+  return Boolean(userEndpoints[role]?.manage);
 }
 
 export function createUser(role: string, data: UserInput) {
-  const path = role === 'Guru' ? '/v1/guru' : role === 'PM' ? '/PM/register' : '/Anggota/register';
-  return api.post(path, data);
+  const endpoint = userEndpoints[role];
+  if (!endpoint) throw new Error(`Pembuatan akun ${role} belum didukung backend.`);
+  return api.post(endpoint.create, data);
+}
+
+function userMutationPath(user: Pick<UserDTO, 'id' | 'role'>) {
+  const path = userEndpoints[user.role]?.manage;
+  if (!path) throw new Error(`Endpoint edit dan hapus ${user.role} belum tersedia di backend.`);
+  if (!Number.isSafeInteger(user.id) || user.id <= 0) throw new Error('ID pengguna tidak valid.');
+  return `${path}/${user.id}`;
+}
+
+export function updateUser(user: UserDTO, data: UserInput) {
+  return api.put(userMutationPath(user), { ...data, password: '' });
+}
+
+export function deleteUser(user: UserDTO) {
+  return api.delete(userMutationPath(user));
 }

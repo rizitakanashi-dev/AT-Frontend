@@ -8,6 +8,7 @@ export const ROLES = {
   PM: 'PM',
   GURU: 'Guru',
   ANGGOTA: 'Anggota',
+  DEVOPS: 'DevOps',
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
@@ -23,6 +24,7 @@ export function normalizeRole(role: string): Role {
   if (role === ROLES.ADMIN) return ROLES.ADMIN;
   if (role === ROLES.PM) return ROLES.PM;
   if (role === ROLES.GURU) return ROLES.GURU;
+  if (role === ROLES.DEVOPS) return ROLES.DEVOPS;
   return ROLES.ANGGOTA;
 }
 
@@ -32,6 +34,7 @@ export function roleHomePath(role: string): string {
     case ROLES.ADMIN: return '/admin';
     case ROLES.PM: return '/pm';
     case ROLES.GURU: return '/guru';
+    case ROLES.DEVOPS: return '/devops';
     default: return '/dashboard';
   }
 }
@@ -42,6 +45,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   PM: 'Project Manager',
   Guru: 'Guru Pengawas',
   Anggota: 'Pelajar',
+  DevOps: 'DevOps Engineer',
 };
 
 export function roleLabel(role: string): string {

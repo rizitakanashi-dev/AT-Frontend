@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetcher } from '@/lib/api';
-import { getRekapAbsensi, getMyAttendance, addProjectMember, postAbsenMasuk, postAbsenPulang } from './absensiService';
+import { getRekapAbsensi, getMyAttendance, addProjectMember, postAbsenMasuk, postAbsenPulang, createUser, updateUser, deleteUser, canManageUser } from './absensiService';
 import api from '@/lib/api';
 
-vi.mock('@/lib/api', () => ({ fetcher: vi.fn(), default: { post: vi.fn(), put: vi.fn() } }));
+vi.mock('@/lib/api', () => ({ fetcher: vi.fn(), default: { post: vi.fn(), put: vi.fn(), delete: vi.fn() } }));
 const fetchMock = vi.mocked(fetcher);
 const own = { idAbsensi: 2, idTarget: 20, nama: 'Nama sama', tanggal: '2026-09-18', jamMasuk: '08:00', jamPulang: null, divisi: 'RPL', status: 'Proses' };
 const other = { ...own, idAbsensi: 1, idTarget: 10 };
@@ -40,6 +40,40 @@ describe('Kontrak Absensi-Tefa', () => {
   it('menolak kontrak rekap yang tidak valid', async () => {
     fetchMock.mockResolvedValueOnce([own]);
     await expect(getRekapAbsensi('2026-09-18')).rejects.toThrow('Format rekap');
+  });
+
+  it.each([
+    ['Anggota', '/Anggota/register'], ['PM', '/PM/register'],
+    ['Guru', '/v1/guru'], ['DevOps', '/DevOps/register'],
+  ])('membuat akun %s lewat endpoint yang sesuai', async (role, path) => {
+    const payload = { nama: 'Tes', password: 'test-only-password', id_role: 5, id_divisi: 2 };
+    await createUser(role, payload);
+    expect(api.post).toHaveBeenCalledWith(path, payload);
+  });
+
+  it.each([['Guru', '/v1/guru'], ['DevOps', '/DevOps']])('mengubah dan menghapus %s tanpa mengganti perannya', async (role, path) => {
+    const user = { id: 9, nama: 'Tes', role };
+    const payload = { nama: 'Nama baru', password: 'ignored', id_role: role === 'DevOps' ? 5 : 2, id_divisi: 3 };
+    await updateUser(user, payload);
+    await deleteUser(user);
+    expect(api.put).toHaveBeenCalledWith(`${path}/9`, { ...payload, password: '' });
+    expect(api.delete).toHaveBeenCalledWith(`${path}/9`);
+    expect(canManageUser(role)).toBe(true);
+  });
+
+  it.each(['Anggota', 'PM', 'Admin'])('tidak mengirim %s ke endpoint Guru/DevOps yang salah', (role) => {
+    const user = { id: 9, nama: 'Tes', role };
+    const payload = { nama: 'Tes', password: '', id_role: 3, id_divisi: 0 };
+    expect(canManageUser(role)).toBe(false);
+    expect(() => updateUser(user, payload)).toThrow('belum tersedia');
+    expect(() => deleteUser(user)).toThrow('belum tersedia');
+    expect(api.put).not.toHaveBeenCalled();
+    expect(api.delete).not.toHaveBeenCalled();
+  });
+
+  it('menolak peran tidak dikenal tanpa membuat akun anggota secara diam-diam', () => {
+    expect(() => createUser('Unknown', { nama: 'Tes', password: 'test-only-password', id_role: 0, id_divisi: 0 })).toThrow('belum didukung');
+    expect(api.post).not.toHaveBeenCalled();
   });
 
   it('mengirim nama field membership sesuai DTO backend', async () => {

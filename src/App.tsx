@@ -14,6 +14,7 @@ const ManagementOverview = lazy(() => import('./features/dashboard/components/Ma
 const UsersPage = lazy(() => import('./features/dashboard/pages/UsersPage'));
 const TargetsPage = lazy(() => import('./features/dashboard/pages/TargetsPage'));
 const DivisionsPage = lazy(() => import('./features/dashboard/pages/DivisionsPage'));
+const HostingPage = lazy(() => import('./features/dashboard/pages/HostingPage'));
 
 export default function App() {
   return <BrowserRouter><Suspense fallback={<div className="mx-auto max-w-3xl p-8"><LoadingState /></div>}><Routes>
@@ -26,6 +27,7 @@ export default function App() {
       <Route path="/dashboard/absensi" element={<AbsensiPage />} />
       <Route path="/dashboard/riwayat" element={<RiwayatPage />} />
       <Route path="/dashboard/targets" element={<TargetsPage />} />
+      <Route path="/dashboard/hosting" element={<HostingPage />} />
     </Route>
     {['Admin', 'Guru', 'PM'].map((role) => <Route key={role} element={<ProtectedRoute allowedRoles={[role]} />}>
       <Route path={`/${role.toLowerCase()}`} element={<ManagementOverview />} />
@@ -34,7 +36,12 @@ export default function App() {
       <Route path={`/${role.toLowerCase()}/absensi`} element={<RiwayatPage />} />
       <Route path={`/${role.toLowerCase()}/targets`} element={<TargetsPage />} />
     </Route>)}
-    <Route element={<ProtectedRoute allowedRoles={['Admin']} />}><Route path="/admin/divisions" element={<DivisionsPage />} /></Route>
+    <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>
+      <Route path="/admin/divisions" element={<DivisionsPage />} />
+      <Route path="/admin/hosting" element={<HostingPage />} />
+    </Route>
+    <Route element={<ProtectedRoute allowedRoles={['PM']} />}><Route path="/pm/hosting" element={<HostingPage />} /></Route>
+    <Route element={<ProtectedRoute allowedRoles={['DevOps']} />}><Route path="/devops" element={<HostingPage />} /></Route>
     <Route path="*" element={<Navigate to="/login" replace />} />
   </Routes></Suspense></BrowserRouter>;
 }
