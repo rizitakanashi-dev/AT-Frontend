@@ -1,221 +1,75 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  Home,
-  FolderKanban,
-  ClipboardCheck,
-  History,
-  Users,
-  LogOut,
-  Search,
-  Bell,
-} from 'lucide-react';
-import { logoutUser, USER_KEY } from '../features/absensi/services/authService';
-import { roleLabel, normalizeRole } from '../lib/roles';
-import { Camera } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useSWRConfig } from 'swr';
+import { LayoutDashboard, FolderKanban, ClipboardCheck, History, Users, LogOut, Menu, Target, Building2, CalendarDays, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
+import { logoutUser } from '@/features/absensi/services/authService';
+import { getSession } from '@/lib/session';
+import { roleLabel, normalizeRole, roleHomePath } from '@/lib/roles';
+import { Brand } from './Brand';
+import { Button } from './ui/button';
+import { Avatar, AvatarFallback } from './ui/avatar';
+import { Separator } from './ui/separator';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from './ui/sheet';
+import { ThemeToggle } from '@/features/auth/components/ThemeToggle';
+import { useProfile } from '@/features/dashboard/useWorkspace';
 
-interface NavItem {
-  label: string;
-  icon: React.ElementType;
-  path: string;
-}
-
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-  title: string;
-  subtitle: string;
-}
-
-const roleNavMap: Record<string, NavItem[]> = {
-  Admin: [
-    { label: 'Home', icon: Home, path: '/admin' },
-    { label: 'Project', icon: FolderKanban, path: '/admin/projects' },
-    { label: 'User', icon: Users, path: '/admin/users' },
-  ],
-  PM: [
-    { label: 'Home', icon: Home, path: '/pm' },
-    { label: 'Project', icon: FolderKanban, path: '/pm/projects' },
-    { label: 'User', icon: Users, path: '/pm/users' },
-  ],
-  Guru: [
-    { label: 'Home', icon: Home, path: '/guru' },
-    { label: 'Project', icon: FolderKanban, path: '/guru/projects' },
-    { label: 'User', icon: Users, path: '/guru/users' },
-  ],
-  Anggota: [
-    { label: 'Home', icon: Home, path: '/dashboard' },
-    { label: 'Project', icon: FolderKanban, path: '/dashboard/project' },
-    { label: 'Absensi', icon: ClipboardCheck, path: '/dashboard/absensi' },
-    { label: 'Riwayat', icon: History, path: '/dashboard/riwayat' },
-  ],
-};
-
-function getRole(user: Record<string, unknown>): string {
-  return (user.role as string) || 'Anggota';
-}
-
-export default function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, title, subtitle, actions }: { children: ReactNode; title: string; subtitle: string; actions?: ReactNode }) {
+  const session = useProfile() || getSession();
+  const role = normalizeRole(session?.role || '');
+  const home = roleHomePath(role);
+  const member = role === 'Anggota';
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
+  const { pathname } = useLocation();
+  const { mutate } = useSWRConfig();
+  const nav = [
+    { label: 'Ringkasan', icon: LayoutDashboard, path: home },
+    { label: member ? 'Absensi saya' : 'Rekap kehadiran', icon: ClipboardCheck, path: `${home}/absensi` },
+    { label: member ? 'Proyek saya' : 'Proyek', icon: FolderKanban, path: `${home}/${member ? 'project' : 'projects'}` },
+    { label: 'Target kerja', icon: Target, path: `${home}/targets` },
+    ...(member ? [{ label: 'Riwayat', icon: History, path: `${home}/riwayat` }] : [{ label: 'Pengguna', icon: Users, path: `${home}/users` }]),
+    ...(role === 'Admin' ? [{ label: 'Divisi & referensi', icon: Building2, path: '/admin/divisions' }] : []),
+  ];
 
-  const userStr = localStorage.getItem(USER_KEY);
-  const user: Record<string, unknown> = userStr ? JSON.parse(userStr) : {};
-  const role = normalizeRole(getRole(user));
-  const nama = (user.nama as string) || (user.Nama as string) || 'User';
-  const navItems = roleNavMap[role] || roleNavMap.Anggota;
-  const displayRole = roleLabel(role);
+  async function logout() {
+    if (leaving) return;
+    setLeaving(true);
+    try { await logoutUser(); }
+    catch { toast.info('Sesi lokal diakhiri. Server belum dapat mengonfirmasi logout.'); }
+    finally {
+      await mutate(() => true, undefined, { revalidate: false });
+      navigate('/login', { replace: true });
+    }
+  }
 
-  const [avatar, setAvatar] = useState<string | null>(() => localStorage.getItem(`avatar_${nama}`));
-  const avatarInitial = (nama || 'U').charAt(0).toUpperCase();
+  function SidebarContent() {
+    return <div className="flex h-full flex-col justify-between p-5">
+      <div className="flex flex-col gap-9">
+        <Brand />
+        <div className="flex flex-col gap-3"><p className="px-3 text-sm text-muted-foreground">Workspace</p><nav aria-label="Navigasi utama" className="flex flex-col gap-1">{nav.map(({ label, icon: Icon, path }) => <NavLink key={path} to={path} end className="nav-link" onClick={() => setMenuOpen(false)}><Icon className="size-[18px]" strokeWidth={1.7} />{label}</NavLink>)}</nav></div>
+      </div>
+      <div className="flex flex-col gap-4">
+        <div className="rounded-xl bg-muted p-4 text-muted-foreground"><p className="font-medium text-foreground">Sedikit progres, setiap hari.</p><p className="mt-1 text-sm leading-relaxed">Catat kehadiran. Kerjakan target. Tumbuh bersama.</p></div>
+        <Separator />
+        <div className="flex items-center gap-3"><Avatar><AvatarFallback>{session?.nama.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar><div className="min-w-0 flex-1"><p className="truncate font-medium">{session?.nama}</p><p className="text-sm text-muted-foreground">{roleLabel(role)}</p></div><Button size="icon" variant="ghost" onClick={() => void logout()} disabled={leaving} aria-label="Keluar dari akun"><LogOut /></Button></div>
+      </div>
+    </div>;
+  }
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setAvatar(dataUrl);
-      localStorage.setItem(`avatar_${nama}`, dataUrl);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleLogout = async () => {
-    await logoutUser();
-    navigate('/login', { replace: true });
-  };
-
-  return (
-    <div className="flex min-h-screen" style={{ backgroundColor: '#121316', color: '#FFFFFF' }}>
-      {/* Sidebar */}
-      <aside
-        className="flex w-64 shrink-0 flex-col justify-between border-r p-5"
-        style={{ borderColor: '#2D3036', backgroundColor: '#18191C' }}
-      >
-        <div className="flex flex-col gap-6">
-          {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <span className="text-lg font-bold">binarycodingspace</span>
-          </div>
-
-          {/* User Profile Card */}
-          <div className="flex items-center gap-3 rounded-xl border p-3" style={{ backgroundColor: '#1E2024', borderColor: '#2D3036' }}>
-            <label className="group relative cursor-pointer" title="Ganti foto profil">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarChange}
-              />
-              {avatar ? (
-                <img src={avatar} alt={nama} className="h-9 w-9 rounded-full object-cover" />
-              ) : (
-                <span className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold text-white" style={{ backgroundColor: '#10B981' }}>
-                  {avatarInitial}
-                </span>
-              )}
-              <span
-                className="absolute -right-0.5 -bottom-0.5 flex h-5 w-5 items-center justify-center rounded-full text-[#121316] opacity-0 transition-opacity group-hover:opacity-100"
-                style={{ backgroundColor: '#10B981' }}
-              >
-                <Camera className="h-3 w-3" />
-              </span>
-            </label>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{nama}</p>
-              <p className="text-xs" style={{ color: '#10B981' }}>{displayRole}</p>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <nav className="space-y-1">
-            {navItems.map(({ label, icon: Icon, path }) => {
-              const active = location.pathname === path;
-              return (
-                <div key={label} className="relative">
-                  {active && (
-                    <span
-                      className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full"
-                      style={{ backgroundColor: '#10B981', boxShadow: '0 0 12px rgba(16,185,129,0.6)' }}
-                    />
-                  )}
-                  <button
-                    onClick={() => navigate(path)}
-                    className="relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200"
-                    style={
-                      active
-                        ? { backgroundColor: 'rgba(16,185,129,0.12)', color: '#10B981', fontWeight: 500 }
-                        : { color: '#8A8F99' }
-                    }
-                    onMouseEnter={(e) => {
-                      if (!active) {
-                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.04)';
-                        e.currentTarget.style.color = '#FFFFFF';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!active) {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = '#8A8F99';
-                      }
-                    }}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {label}
-                  </button>
-                </div>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Logout Button */}
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-medium transition-all duration-200"
-          style={{ color: '#FF6B6B', borderColor: 'rgba(255,107,107,0.18)', backgroundColor: 'rgba(255,107,107,0.06)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,107,107,0.14)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,107,107,0.06)'; }}
-        >
-          <LogOut className="h-4 w-4" />
-          Logout
-        </button>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        {/* Header Bar */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b px-8 py-4 backdrop-blur" style={{ borderColor: '#2D3036', backgroundColor: 'rgba(18,19,22,0.85)' }}>
-          <div>
-            <h1 className="text-xl font-bold">{title}</h1>
-            <p className="text-xs" style={{ color: '#8A8F99' }}>{subtitle}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden rounded-lg px-3 py-2 text-xs font-medium sm:block" style={{ backgroundColor: '#1E2024', color: '#8A8F99', border: '1px solid #2D3036' }}>
-              {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-            </span>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: '#8A8F99' }} />
-              <input
-                placeholder="Cari..."
-                className="w-56 rounded-lg py-2 pl-9 pr-3 text-sm transition-all focus:outline-none"
-                style={{ backgroundColor: '#1E2024', color: '#FFFFFF', border: '1px solid #2D3036' }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(16,185,129,0.5)'; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = '#2D3036'; }}
-              />
-            </div>
-            <button
-              className="rounded-lg p-2 transition-all hover:border-lime-500/30"
-              style={{ backgroundColor: '#1E2024', color: '#8A8F99', border: '1px solid #2D3036' }}
-            >
-              <Bell className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Page Content */}
-        <div className="p-8">{children}</div>
+  return <div className="flex min-h-dvh bg-background text-foreground">
+    <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-card focus:p-3 focus:text-foreground">Lewati navigasi</a>
+    <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 border-r bg-card text-card-foreground lg:block"><SidebarContent /></aside>
+    <div className="min-w-0 flex-1">
+      <header className="sticky top-0 z-10 flex h-20 items-center justify-between border-b bg-background/95 px-5 text-foreground backdrop-blur-sm md:px-9">
+        <div className="flex items-center gap-3"><Sheet open={menuOpen} onOpenChange={setMenuOpen}><SheetTrigger asChild><Button size="icon" variant="ghost" className="lg:hidden" aria-label="Buka navigasi"><Menu /></Button></SheetTrigger><SheetContent side="left" className="w-72"><SheetHeader className="sr-only"><SheetTitle>Navigasi workspace</SheetTitle><SheetDescription>Menu sesuai peran akun Anda.</SheetDescription></SheetHeader><SidebarContent /></SheetContent></Sheet><span className="hidden text-muted-foreground sm:inline">Workspace</span><ChevronRight className="hidden size-4 text-muted-foreground sm:block" /><span className="font-medium">{title}</span></div>
+        <div className="flex items-center gap-4"><span className="hidden items-center gap-2 text-sm text-muted-foreground md:flex"><CalendarDays className="size-4" />{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span><ThemeToggle /></div>
+      </header>
+      <main id="main-content" className="mx-auto max-w-[1440px] px-5 py-8 md:px-9 md:py-9">
+        <div className="mb-8 flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-balance text-2xl font-semibold tracking-tight md:text-[28px]">{title}</h1><p className="mt-1 text-pretty text-muted-foreground">{subtitle}</p></div>{actions}</div>
+        <div key={pathname} className="page-enter">{children}</div>
       </main>
     </div>
-  );
+  </div>;
 }

@@ -1,57 +1,42 @@
-import React from 'react';
+import { useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useTheme } from 'next-themes';
 import { Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export const ThemeToggle: React.FC = () => {
-  const { setTheme } = useTheme();
+export function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const [busy, setBusy] = useState(false);
+  const running = useRef(false);
+  const dark = resolvedTheme === 'dark';
 
-  const toggleTheme = (event: React.MouseEvent<HTMLButtonElement>) => {
-    if (!('startViewTransition' in document)) {
-      setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  async function toggleTheme() {
+    if (running.current) return;
+    const next = dark ? 'light' : 'dark';
+    const apply = () => flushSync(() => setTheme(next));
+    if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      apply();
       return;
     }
+    running.current = true;
+    setBusy(true);
+    try {
+      const transition = document.startViewTransition(apply);
+      await transition.ready;
+      await document.documentElement.animate({
+        clipPath: dark ? ['inset(0 100% 0 0)', 'inset(0 0 0 0)'] : ['inset(0 0 0 100%)', 'inset(0 0 0 0)'],
+        transform: [dark ? 'translateX(-28px)' : 'translateX(28px)', 'translateX(0)'],
+      }, { duration: 620, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', pseudoElement: '::view-transition-new(root)' }).finished;
+      await transition.finished;
+    } catch {
+      apply();
+    } finally {
+      running.current = false;
+      setBusy(false);
+    }
+  }
 
-    const x = event.clientX;
-    const y = event.clientY;
-    const endRadius = Math.hypot(
-      Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y),
-    );
-
-    const transition = (document as any).startViewTransition(() => {
-      // next-themes applies the class via React render; the snapshot
-      // is taken AFTER this callback returns, so the new state is visible.
-      setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-    });
-
-    transition.ready.then(() => {
-      document.documentElement.animate(
-        {
-          clipPath: [
-            `circle(0px at ${x}px ${y}px)`,
-            `circle(${endRadius}px at ${x}px ${y}px)`,
-          ],
-        },
-        {
-          duration: 500,
-          easing: 'ease-in-out',
-          pseudoElement: '::view-transition-new(root)',
-        },
-      );
-    });
-  };
-
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={toggleTheme}
-      className="rounded-lg transition-all"
-    >
-      <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-amber-500" />
-      <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 text-slate-200" />
-      <span className="sr-only">Toggle theme</span>
-    </Button>
-  );
-};
+  return <Button variant="outline" size="icon" type="button" disabled={busy} onClick={() => void toggleTheme()} aria-label={dark ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'} title={dark ? 'Tema terang' : 'Tema gelap'}>
+    {dark ? <Sun /> : <Moon />}
+  </Button>;
+}

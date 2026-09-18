@@ -1,104 +1,41 @@
-import { useState, useEffect, useCallback } from 'react';
-import { History, Clock } from 'lucide-react';
-import DashboardLayout from '../../../components/DashboardLayout';
-import { getRekapAbsensi, todayISO } from '../absensiService';
-import { AbsenRekapDTO } from '../../../types/absensi';
+import { useState } from 'react';
+import useSWR from 'swr';
+import { Download, RefreshCw } from 'lucide-react';
+import DashboardLayout from '@/components/DashboardLayout';
+import { getMyAttendance, getRekapAbsensi, todayISO } from '../absensiService';
+import { useProfile } from '../useWorkspace';
+import { normalizeRole } from '@/lib/roles';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { LoadingState, ErrorState } from '@/components/DataState';
+import { Pagination, SearchInput } from '@/components/WorkspaceControls';
+import { AttendanceTable } from '../components/AttendanceTable';
 
 export default function RiwayatPage() {
-  const [logList, setLogList] = useState<AbsenRekapDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [tanggal, setTanggal] = useState(todayISO());
+  const user = useProfile();
+  const personal = normalizeRole(user?.role || '') === 'Anggota';
+  const [date, setDate] = useState(todayISO);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const { data, error, isLoading, isValidating, mutate } = useSWR(user && date ? ['history', user.id, date, personal] : null, () => personal ? getMyAttendance(date) : getRekapAbsensi(date));
+  const filtered = (data || []).filter((row) => [row.nama, row.project, row.target, row.divisi, row.status].join(' ').toLowerCase().includes(search.toLowerCase()));
+  const current = Math.min(page, Math.max(1, Math.ceil(filtered.length / 10)));
 
-  const fetchRiwayat = useCallback(async (date: string) => {
-    setLoading(true);
-    setErrorMsg('');
-    try {
-      const rekap = await getRekapAbsensi(date);
-      setLogList(rekap);
-    } catch {
-      setErrorMsg('Gagal memuat riwayat absensi dari server.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  function exportCSV() {
+    const escape = (value: unknown) => {
+      let text = String(value ?? '');
+      if (/^[\s]*[=+\-@\t\r]/.test(text)) text = `'${text}`;
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+    const rows = [['Tanggal', 'Nama', 'Divisi', 'Proyek', 'Target', 'Status', 'Masuk', 'Pulang'], ...filtered.map((row) => [row.tanggal, row.nama, row.divisi, row.project, row.target, row.status, row.jamMasuk, row.jamPulang])];
+    const url = URL.createObjectURL(new Blob(['\uFEFF' + rows.map((row) => row.map(escape).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8;' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `rekap-${date}.csv`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 
-  useEffect(() => {
-    void fetchRiwayat(tanggal);
-  }, [tanggal, fetchRiwayat]);
-
-  return (
-    <DashboardLayout title="Riwayat" subtitle="Riwayat aktivitas dan absensi kamu.">
-      {/* Date filter */}
-      <div className="mb-5 flex items-center gap-3">
-        <label className="text-sm" style={{ color: '#8A8F99' }}>Tanggal</label>
-        <input
-          type="date"
-          value={tanggal}
-          onChange={(e) => setTanggal(e.target.value)}
-          className="rounded-xl px-3 py-2 text-sm"
-          style={{ backgroundColor: '#1E2024', color: '#FFFFFF', border: '1px solid #2D3036' }}
-        />
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center py-20" style={{ color: '#8A8F99' }}>
-          Memuat riwayat...
-        </div>
-      ) : errorMsg ? (
-        <div
-          className="rounded-xl p-4 text-sm"
-          style={{ backgroundColor: 'rgba(255,77,77,0.08)', color: '#FF6B6B', border: '1px solid rgba(255,77,77,0.2)' }}
-        >
-          {errorMsg}
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-xl" style={{ backgroundColor: '#1E2024', border: '1px solid #2D3036' }}>
-          {logList.length === 0 ? (
-            <div className="p-12 text-center">
-              <History className="mx-auto mb-3 h-10 w-10" style={{ color: '#8A8F99' }} />
-              <p style={{ color: '#8A8F99' }}>Belum ada riwayat absensi pada tanggal ini.</p>
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left" style={{ borderColor: '#2D3036' }}>
-                  <th className="px-5 py-3 text-xs font-medium" style={{ color: '#8A8F99' }}>Tanggal</th>
-                  <th className="px-5 py-3 text-xs font-medium" style={{ color: '#8A8F99' }}>Project</th>
-                  <th className="px-5 py-3 text-xs font-medium" style={{ color: '#8A8F99' }}>Target</th>
-                  <th className="px-5 py-3 text-xs font-medium" style={{ color: '#8A8F99' }}>Status</th>
-                  <th className="px-5 py-3 text-xs font-medium" style={{ color: '#8A8F99' }}>Jam</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logList.map((row) => (
-                  <tr key={row.idAbsensi} className="border-b last:border-0" style={{ borderColor: '#2D3036' }}>
-                    <td className="px-5 py-3">{row.tanggal}</td>
-                    <td className="px-5 py-3" style={{ color: '#8A8F99' }}>{row.project || '-'}</td>
-                    <td className="px-5 py-3" style={{ color: '#8A8F99' }}>{row.target || '-'}</td>
-                    <td className="px-5 py-3">
-                      <span
-                        className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs"
-                        style={
-                          row.jamPulang
-                            ? { backgroundColor: 'rgba(16,185,129,0.12)', color: '#10B981' }
-                            : { backgroundColor: 'rgba(255,159,67,0.12)', color: '#FF9F43' }
-                        }
-                      >
-                        <Clock className="h-3 w-3" />
-                        {row.jamPulang ? 'Selesai' : 'On Progress'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-xs" style={{ color: '#8A8F99' }}>
-                      {row.jamMasuk ? `${row.jamMasuk}${row.jamPulang ? ` ke ${row.jamPulang}` : ''}` : '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-    </DashboardLayout>
-  );
+  return <DashboardLayout title={personal ? 'Riwayat kehadiran' : 'Rekap kehadiran'} subtitle={personal ? 'Tinjau kembali aktivitas dan target harianmu.' : 'Pantau catatan kehadiran semua anggota berdasarkan tanggal.'} actions={<Button variant="outline" onClick={exportCSV} disabled={!filtered.length || !!error || isLoading}><Download data-icon="inline-start" />Ekspor CSV</Button>}><div className="page-stack"><div className="flex flex-wrap items-end justify-between gap-4"><div className="w-52"><Field><FieldLabel htmlFor="attendance-date">Tanggal kehadiran</FieldLabel><Input id="attendance-date" type="date" value={date} max={todayISO()} onChange={(event) => { setDate(event.target.value); setPage(1); }} /></Field></div><div className="flex w-full items-center gap-3 sm:w-auto"><SearchInput value={search} onChange={(value) => { setSearch(value); setPage(1); }} placeholder="Cari nama, proyek, atau target..." /><Button variant="outline" size="icon" onClick={() => void mutate()} disabled={isValidating || !date} aria-label="Muat ulang rekap"><RefreshCw /></Button></div></div>{!date ? <p className="text-muted-foreground">Pilih tanggal untuk melihat kehadiran.</p> : error ? <ErrorState error={error} retry={() => void mutate()} /> : isLoading ? <LoadingState /> : <div className="table-surface"><AttendanceTable rows={filtered.slice((current - 1) * 10, current * 10)} personal={personal} /><Pagination page={current} total={filtered.length} onChange={setPage} /></div>}</div></DashboardLayout>;
 }
