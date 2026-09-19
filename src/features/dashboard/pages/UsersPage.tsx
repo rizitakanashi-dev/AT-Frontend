@@ -36,8 +36,8 @@ export default function UsersPage() {
           </div>
           <Button variant="outline" size="sm" onClick={() => void mutate()} disabled={isValidating || !profile}><RefreshCw data-icon="inline-start" className={isValidating ? 'animate-spin' : ''} />{isValidating ? 'Memuat...' : 'Perbarui'}</Button>
         </section>
-        {error ? <ErrorState error={error} retry={() => void mutate()} /> : isLoading || !profile ? <LoadingState /> : <UserDirectory users={data || []} admin={admin} onEdit={setEditor} onDelete={setDeleting} onView={setViewing} />}
-        {admin && <Alert><ShieldCheck /><AlertTitle>Akses pengelolaan akun</AlertTitle><AlertDescription>Penambahan akun tersedia untuk Pelajar, Guru, PM, dan DevOps. Backend saat ini mendukung edit/hapus Guru dan DevOps; edit/hapus Pelajar dan PM serta pengelolaan akun Admin memerlukan endpoint tambahan.</AlertDescription></Alert>}
+        {error ? <ErrorState error={error} retry={() => void mutate()} /> : isLoading || !profile ? <LoadingState /> : <UserDirectory users={admin && profile && data && !data.some((user) => user.id === profile.id) ? [...data, profile] : data || []} admin={admin} onEdit={setEditor} onDelete={setDeleting} onView={setViewing} />}
+        {admin && <Alert><ShieldCheck /><AlertTitle>Pengelolaan akun sesuai dukungan server</AlertTitle><AlertDescription><div className="flex flex-col gap-2"><p>Direktori mencakup Pelajar, Guru, PM, DevOps, dan profil Admin yang sedang masuk.</p><details><summary className="cursor-pointer font-medium">Lihat dukungan tindakan per peran</summary><ul className="mt-2 flex list-disc flex-col gap-1 pl-4"><li>Guru dan DevOps: tambah, lihat, edit, dan hapus.</li><li>Pelajar dan PM: tambah dan lihat. Endpoint edit/hapus belum tersedia.</li><li>Admin: lihat profil sendiri. Backend tidak menyediakan direktori maupun CRUD Admin; registrasi Admin hanya untuk inisialisasi pertama.</li></ul><p className="mt-2">CRUD seluruh peran memerlukan dukungan API. Tidak ada perubahan pada backend atau tindakan yang disimulasikan.</p></details></div></AlertDescription></Alert>}
       </div>
       {admin && editor && <UserEditor user={editor === 'new' ? undefined : editor} onClose={() => setEditor(null)} />}
       {admin && deleting && <ConfirmDelete title={`Hapus ${deleting.nama}?`} description={`Akun ${roleLabel(deleting.role)} ini akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.`} onClose={() => setDeleting(null)} onConfirm={async () => { await deleteUser(deleting); toast.success('Akun pengguna dihapus.'); await refresh(); }} />}
@@ -49,6 +49,7 @@ export default function UsersPage() {
             <div><dt className="text-sm text-muted-foreground">Peran</dt><dd><Badge variant="secondary">{roleLabel(viewing.role)}</Badge></dd></div>
             <div><dt className="text-sm text-muted-foreground">Divisi</dt><dd>{viewing.divisi || 'Tanpa divisi'}</dd></div>
           </dl>
+          {admin && !canManageUser(viewing.role) && <Alert><ShieldCheck /><AlertTitle>Profil hanya dapat dilihat</AlertTitle><AlertDescription>Backend belum menyediakan endpoint edit dan hapus untuk peran {roleLabel(viewing.role)}. Profil tidak dikirim ke endpoint peran lain.</AlertDescription></Alert>}
           <DialogFooter><Button variant="outline" onClick={() => setViewing(null)}>Tutup</Button>{admin && canManageUser(viewing.role) && <Button onClick={() => { setEditor(viewing); setViewing(null); }}>Edit profil</Button>}</DialogFooter>
         </DialogContent>
       </Dialog>}

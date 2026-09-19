@@ -110,6 +110,18 @@
   .stagger-in > *:nth-child(n+6) { animation-delay: 220ms; }
   .hover-lift { transition: transform 220ms ease, box-shadow 220ms ease; }
   .hover-lift:hover { transform: translateY(-3px); box-shadow: 0 14px 28px -14px color-mix(in srgb, var(--foreground) 20%, transparent); }
+  .hosting-intro { @apply flex-col items-stretch gap-6; border-top: 2px solid var(--primary); }
+  .hosting-steps { @apply grid grid-cols-2 gap-5 sm:grid-cols-4; }
+  .hosting-step { @apply flex items-start gap-3; }
+  .hosting-step-icon { @apply flex size-8 shrink-0 items-center justify-center rounded-full border bg-muted text-muted-foreground; transition: background-color 200ms ease, box-shadow 200ms ease; }
+  .hosting-step.is-done .hosting-step-icon { @apply border-primary/20 bg-accent text-primary; }
+  .hosting-step.is-current .hosting-step-icon { @apply border-primary bg-primary text-primary-foreground; box-shadow: 0 0 0 4px var(--accent); }
+  .hosting-stat { border-bottom: 2px solid transparent; transition: border-color 200ms ease, transform 220ms ease, box-shadow 220ms ease; }
+  .hosting-stat:hover { border-bottom-color: var(--primary); }
+  .hosting-table [data-slot="table-body"] > tr { animation: page-enter 260ms ease-out both; }
+  .hosting-table [data-slot="table-body"] > tr:nth-child(2n) { animation-delay: 45ms; }
+  .hosting-table [data-slot="table-row"] { transition: background-color 180ms ease; }
+  .hosting-table [data-slot="table-header"] { background: var(--muted); }
   .live-dot { position: relative; display: inline-flex; }
   .live-dot::before { content: ''; position: absolute; inset: 0; border-radius: 999px; background: currentColor; opacity: .5; animation: live-ping 1.8s cubic-bezier(0, 0, .2, 1) infinite; }
 }
