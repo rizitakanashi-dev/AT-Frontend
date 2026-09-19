@@ -1,0 +1,90 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fetcher } from '@/lib/api';
+import { getRekapAbsensi, getMyAttendance, addProjectMember, postAbsenMasuk, postAbsenPulang, createUser, updateUser, deleteUser, canManageUser } from './absensiService';
+import api from '@/lib/api';
+
+vi.mock('@/lib/api', () => ({ fetcher: vi.fn(), default: { post: vi.fn(), put: vi.fn(), delete: vi.fn() } }));
+const fetchMock = vi.mocked(fetcher);
+const own = { idAbsensi: 2, idTarget: 20, nama: 'Nama sama', tanggal: '2026-09-18', jamMasuk: '08:00', jamPulang: null, divisi: 'RPL', status: 'Proses' };
+const other = { ...own, idAbsensi: 1, idTarget: 10 };
+
+beforeEach(() => vi.clearAllMocks());
+
+describe('Kontrak Absensi-Tefa', () => {
+  it('menggabungkan seluruh halaman respons rekap', async () => {
+    fetchMock.mockResolvedValueOnce({ data: [other], pagination: { totalPages: 2 } });
+    fetchMock.mockResolvedValueOnce({ data: [own], pagination: { totalPages: 2 } });
+    expect(await getRekapAbsensi('2026-09-18')).toEqual([other, own]);
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/v1/absen?tanggal=2026-09-18&page=2&pageSize=100');
+  });
+
+  it('memilih kepemilikan lewat ID target, bukan nama atau posisi catatan', async () => {
+    fetchMock.mockImplementation(async (path: string) => {
+      if (path === '/v1/target/my') return [{ id: own.idTarget }];
+      return { data: [other, own], pagination: { totalPages: 1 } };
+    });
+    expect(await getMyAttendance('2026-09-18')).toEqual([own]);
+  });
+
+  it('tidak menampilkan catatan orang lain saat akun belum punya target', async () => {
+    fetchMock.mockImplementation(async (path: string) => path === '/v1/target/my' ? [] : { data: [other], pagination: { totalPages: 1 } });
+    expect(await getMyAttendance('2026-09-18')).toEqual([]);
+  });
+
+  it('tidak menyembunyikan kegagalan pagination sebagai data kosong', async () => {
+    fetchMock.mockResolvedValueOnce({ data: [own], pagination: { totalPages: 2 } });
+    fetchMock.mockRejectedValueOnce(new Error('Server gagal'));
+    await expect(getRekapAbsensi('2026-09-18')).rejects.toThrow('Server gagal');
+  });
+
+  it('menolak kontrak rekap yang tidak valid', async () => {
+    fetchMock.mockResolvedValueOnce([own]);
+    await expect(getRekapAbsensi('2026-09-18')).rejects.toThrow('Format rekap');
+  });
+
+  it.each([
+    ['Anggota', '/Anggota/register'], ['PM', '/PM/register'],
+    ['Guru', '/v1/guru'], ['DevOps', '/DevOps/register'],
+  ])('membuat akun %s lewat endpoint yang sesuai', async (role, path) => {
+    const payload = { nama: 'Tes', password: 'test-only-password', id_role: 5, id_divisi: 2 };
+    await createUser(role, payload);
+    expect(api.post).toHaveBeenCalledWith(path, payload);
+  });
+
+  it.each([['Guru', '/v1/guru'], ['DevOps', '/DevOps']])('mengubah dan menghapus %s tanpa mengganti perannya', async (role, path) => {
+    const user = { id: 9, nama: 'Tes', role };
+    const payload = { nama: 'Nama baru', password: 'ignored', id_role: role === 'DevOps' ? 5 : 2, id_divisi: 3 };
+    await updateUser(user, payload);
+    await deleteUser(user);
+    expect(api.put).toHaveBeenCalledWith(`${path}/9`, { ...payload, password: '' });
+    expect(api.delete).toHaveBeenCalledWith(`${path}/9`);
+    expect(canManageUser(role)).toBe(true);
+  });
+
+  it.each(['Anggota', 'PM', 'Admin'])('tidak mengirim %s ke endpoint Guru/DevOps yang salah', (role) => {
+    const user = { id: 9, nama: 'Tes', role };
+    const payload = { nama: 'Tes', password: '', id_role: 3, id_divisi: 0 };
+    expect(canManageUser(role)).toBe(false);
+    expect(() => updateUser(user, payload)).toThrow('belum tersedia');
+    expect(() => deleteUser(user)).toThrow('belum tersedia');
+    expect(api.put).not.toHaveBeenCalled();
+    expect(api.delete).not.toHaveBeenCalled();
+  });
+
+  it('menolak peran tidak dikenal tanpa membuat akun anggota secara diam-diam', () => {
+    expect(() => createUser('Unknown', { nama: 'Tes', password: 'test-only-password', id_role: 0, id_divisi: 0 })).toThrow('belum didukung');
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it('mengirim nama field membership sesuai DTO backend', async () => {
+    await addProjectMember(7, 3);
+    expect(api.post).toHaveBeenCalledWith('/v1/project-anggota', { user: 7, project: 3 });
+  });
+
+  it('mempertahankan metode masuk POST dan pulang PUT serta status pilihan', async () => {
+    await postAbsenMasuk({ idProject: 3, target: 'Perbaiki antarmuka', idStatus: 5 });
+    await postAbsenPulang({ idAbsensi: 2, idTarget: 20, idStatus: 8 });
+    expect(api.post).toHaveBeenCalledWith('/v1/absen/masuk', { idProject: 3, target: 'Perbaiki antarmuka', idStatus: 5 });
+    expect(api.put).toHaveBeenCalledWith('/v1/absen/pulang', { idAbsensi: 2, idTarget: 20, idStatus: 8 });
+  });
+});
