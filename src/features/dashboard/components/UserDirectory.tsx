@@ -22,7 +22,7 @@ export function UserDirectory({ users, admin, onEdit, onDelete, onView }: {
   const [role, setRole] = useState('all');
   const [page, setPage] = useState(1);
   const [descending, setDescending] = useState(false);
-  const roles = admin ? ['all', 'Anggota', 'Guru', 'PM', 'DevOps'] : ['all'];
+  const roles = admin ? ['all', 'Anggota', 'Guru', 'PM', 'DevOps', 'Admin'] : ['all'];
   const query = search.trim().toLocaleLowerCase('id-ID');
   const filtered = users.filter((user) => (role === 'all' || user.role === role) && `${user.nama} ${user.divisi || ''} ${roleLabel(user.role)}`.toLocaleLowerCase('id-ID').includes(query))
     .sort((a, b) => (descending ? -1 : 1) * a.nama.localeCompare(b.nama, 'id'));
@@ -75,6 +75,7 @@ export function UserDirectory({ users, admin, onEdit, onDelete, onView }: {
                       <TableCell>
                         <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="icon" onClick={() => onView(user)} aria-label={`Lihat ${user.nama}`} title="Lihat profil"><Eye /></Button>
+                          {admin && !canManageUser(user.role) && <span className="hidden items-center pr-2 text-xs text-muted-foreground lg:flex" title="Endpoint edit/hapus peran ini belum tersedia di backend">Hanya lihat</span>}
                           {admin && canManageUser(user.role) && <>
                             <Button variant="ghost" size="icon" onClick={() => onEdit(user)} aria-label={`Edit ${user.nama}`} title="Edit pengguna"><Pencil /></Button>
                             <Button variant="ghost" size="icon" onClick={() => onDelete(user)} aria-label={`Hapus ${user.nama}`} title="Hapus pengguna"><Trash2 /></Button>
