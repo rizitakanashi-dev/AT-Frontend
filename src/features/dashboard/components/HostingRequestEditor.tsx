@@ -3,6 +3,7 @@ import useSWR from 'swr';
 import { LoaderCircle, Rocket } from 'lucide-react';
 import { toast } from 'sonner';
 import { errorMessage } from '@/lib/api';
+import { safeHostingUrl } from '../hostingAccess';
 import type { HostingRequestDTO } from '@/types/hosting';
 import { getProjects, getProjectAnggota } from '../absensiService';
 import { createHostingRequest, updateHostingRequest } from '../hostingService';
@@ -16,12 +17,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SelectField } from '@/components/WorkspaceControls';
 import { ErrorState, LoadingState } from '@/components/DataState';
 
-export function HostingRequestEditor({ request, onClose }: { request?: HostingRequestDTO; onClose: () => void }) {
+export function HostingRequestEditor({ request, resubmit = false, onClose }: { request?: HostingRequestDTO; resubmit?: boolean; onClose: () => void }) {
   const profile = useProfile();
   const refresh = useRefreshWorkspace();
-  const { data, error, isLoading, mutate } = useSWR(profile ? ['hosting-editor-projects', profile.id] : null, async () => {
+  const { data, error, isLoading, mutate } = useSWR(profile ? ['hosting-editor-projects', profile.id, request?.id, resubmit] : null, async () => {
     const [projects, members] = await Promise.all([getProjects(), getProjectAnggota()]);
-    return projects.filter((project) => members.some((member) => member.idProject === project.id && member.idUser === profile?.id));
+    return projects.filter((project) => profile?.role === 'Admin' || members.some((member) => member.idProject === project.id && member.idUser === profile?.id) || (!resubmit && request?.idProject === project.id));
   });
   const [project, setProject] = useState(request ? String(request.idProject) : '');
   const [contactName, setContactName] = useState(request?.contactName || profile?.nama || '');
@@ -38,6 +39,8 @@ export function HostingRequestEditor({ request, onClose }: { request?: HostingRe
     event.preventDefault();
     if (pending || !data) return;
     if (!data.some((item) => item.id === Number(project))) { setFormError('Pilih proyek yang valid dan sudah kamu ikuti.'); return; }
+    if (!contactName.trim() || !contactPhone.trim() || !contactEmail.trim()) { setFormError('Lengkapi nama, email, dan nomor kontak.'); return; }
+    if ([repositoryUrl, documentationUrl].some((url) => url.trim() && !safeHostingUrl(url))) { setFormError('Tautan harus berupa alamat HTTP/HTTPS yang valid, tanpa kredensial.'); return; }
     setPending(true);
     setFormError('');
     try {
@@ -51,20 +54,20 @@ export function HostingRequestEditor({ request, onClose }: { request?: HostingRe
         repositoryUrl: repositoryUrl.trim() || undefined,
         documentationUrl: documentationUrl.trim() || undefined,
       };
-      if (request) await updateHostingRequest(request.id, input);
+      if (request && !resubmit) await updateHostingRequest(request.id, input);
       else await createHostingRequest(input);
-      toast.success(request ? 'Permintaan hosting diperbarui.' : 'Permintaan hosting diajukan. Menunggu review PM.');
-      await refresh();
+      toast.success(request && !resubmit ? 'Detail permintaan diperbarui. Status tetap dipertahankan.' : 'Permintaan hosting baru diajukan. Menunggu review PM.');
+      await Promise.allSettled([refresh()]);
       onClose();
     } catch (err) { setFormError(errorMessage(err)); }
     finally { setPending(false); }
   }
 
   const valid = project && contactName.trim() && contactEmail.trim() && contactPhone.trim();
-  return <Dialog open onOpenChange={(open) => { if (!open && !pending) onClose(); }}><DialogContent showCloseButton={!pending} className="sm:max-w-lg"><DialogHeader><DialogTitle className="flex items-center gap-2"><Rocket className="size-5 text-primary" />{request ? 'Edit permintaan hosting' : 'Ajukan hosting proyek'}</DialogTitle><DialogDescription>{request ? 'Ubah detail permintaan sebelum direview ulang oleh PM.' : 'Isi detail proyek agar PM dapat meninjau dan menyetujui hosting.'}</DialogDescription></DialogHeader>
+  return <Dialog open onOpenChange={(open) => { if (!open && !pending) onClose(); }}><DialogContent showCloseButton={!pending} className="sm:max-w-lg"><DialogHeader><DialogTitle className="flex items-center gap-2"><Rocket className="size-5 text-primary" />{resubmit ? 'Ajukan ulang hosting' : request ? 'Edit permintaan hosting' : 'Ajukan hosting proyek'}</DialogTitle><DialogDescription>{resubmit ? 'Detail lama disalin ke pengajuan baru. Perbaiki sesuai catatan PM; riwayat permintaan sebelumnya tidak dihapus.' : request ? 'Perbarui detail permintaan. Mengedit tidak mengubah status review.' : 'Isi detail proyek agar PM dapat meninjau dan menyetujui hosting.'}</DialogDescription></DialogHeader>
     {error ? <ErrorState error={error} retry={() => void mutate()} /> : isLoading || !data ? <LoadingState /> : !data.length ? <Alert><AlertDescription>Kamu belum tergabung di proyek apa pun. Minta PM menambahkanmu ke proyek sebelum mengajukan hosting.</AlertDescription></Alert> : <form onSubmit={submit} className="flex flex-col gap-5">
       <FieldGroup>
-        <SelectField label="Proyek" value={project} onChange={setProject} options={data.map((item) => ({ value: String(item.id), label: item.nama }))} disabled={pending || !!request} />
+        <SelectField label="Proyek" value={project} onChange={setProject} options={data.map((item) => ({ value: String(item.id), label: item.nama }))} disabled={pending || (!!request && !resubmit)} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Field><FieldLabel htmlFor="contact-name">Nama kontak</FieldLabel><Input id="contact-name" value={contactName} onChange={(event) => setContactName(event.target.value)} required maxLength={100} disabled={pending} /></Field>
           <Field><FieldLabel htmlFor="contact-phone">Nomor WhatsApp</FieldLabel><Input id="contact-phone" value={contactPhone} onChange={(event) => setContactPhone(event.target.value)} required maxLength={30} disabled={pending} placeholder="08xx-xxxx-xxxx" /></Field>
@@ -78,7 +81,7 @@ export function HostingRequestEditor({ request, onClose }: { request?: HostingRe
         </div>
       </FieldGroup>
       {formError && <Alert variant="destructive"><AlertDescription>{formError}</AlertDescription></Alert>}
-      <DialogFooter><Button type="button" variant="outline" onClick={onClose} disabled={pending}>Batal</Button><Button type="submit" disabled={pending || !valid}>{pending && <LoaderCircle className="animate-spin" data-icon="inline-start" />}{pending ? 'Menyimpan...' : request ? 'Simpan perubahan' : 'Ajukan hosting'}</Button></DialogFooter>
+      <DialogFooter><Button type="button" variant="outline" onClick={onClose} disabled={pending}>Batal</Button><Button type="submit" disabled={pending || !valid}>{pending && <LoaderCircle className="animate-spin" data-icon="inline-start" />}{pending ? 'Menyimpan...' : resubmit ? 'Kirim pengajuan baru' : request ? 'Simpan perubahan' : 'Ajukan hosting'}</Button></DialogFooter>
     </form>}
   </DialogContent></Dialog>;
 }
