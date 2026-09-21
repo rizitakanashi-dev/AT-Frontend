@@ -44,7 +44,7 @@ export function UserEditor({ user, onClose }: { user?: UserDTO; onClose: () => v
     setFormError('');
     const payload = { nama: name.trim(), password, id_role: selectedRole.id, id_divisi: selectedDivision === 'none' ? 0 : Number(selectedDivision) };
     try {
-      if (user) await updateUser(user, payload);
+      if (user) await updateUser(user, { ...payload, id_role: selectedRole.id });
       else await createUser(role, payload);
       toast.success(user ? 'Data pengguna diperbarui.' : 'Pengguna berhasil ditambahkan.');
       await refresh();
@@ -58,7 +58,7 @@ export function UserEditor({ user, onClose }: { user?: UserDTO; onClose: () => v
       <DialogContent showCloseButton={!pending}>
         <DialogHeader>
           <DialogTitle>{user ? 'Edit pengguna' : 'Tambah pengguna'}</DialogTitle>
-          <DialogDescription>{user ? `Perbarui profil ${user.nama}. Kata sandi dan peran tetap dipertahankan.` : 'Siapkan akun baru untuk bergabung di Teaching Factory.'}</DialogDescription>
+          <DialogDescription>{user ? `Perbarui profil ${user.nama}, termasuk role, divisi, atau password bila diperlukan.` : 'Siapkan akun baru untuk bergabung di Teaching Factory.'}</DialogDescription>
         </DialogHeader>
         {error ? <ErrorState error={error} retry={() => void mutate()} /> : isLoading || !data ? <LoadingState /> : (
           <form onSubmit={submit} className="flex flex-col gap-6">
@@ -68,11 +68,7 @@ export function UserEditor({ user, onClose }: { user?: UserDTO; onClose: () => v
                 <Input id="user-name" value={name} onChange={(event) => setName(event.target.value)} autoComplete="off" maxLength={100} required disabled={pending} placeholder="Nama lengkap pengguna" />
               </Field>
               {user ? (
-                <Field>
-                  <FieldLabel htmlFor="user-role">Peran akun</FieldLabel>
-                  <Input id="user-role" value={roleLabel(role)} readOnly />
-                  <FieldDescription>Peran tidak diubah oleh endpoint edit profil.</FieldDescription>
-                </Field>
+                <SelectField label="Peran" value={role} onChange={setRole} options={data.roles.filter((item) => ['Admin', 'Anggota', 'Guru', 'PM', 'DevOps'].includes(item.nama)).map((item) => ({ value: item.nama, label: roleLabel(item.nama) }))} disabled={pending} />
               ) : (
                 <>
                   <SelectField label="Peran" value={role} onChange={setRole} options={data.roles.filter((item) => ['Anggota', 'Guru', 'PM', 'DevOps'].includes(item.nama)).map((item) => ({ value: item.nama, label: roleLabel(item.nama) }))} disabled={pending} />
@@ -83,6 +79,7 @@ export function UserEditor({ user, onClose }: { user?: UserDTO; onClose: () => v
                   </Field>
                 </>
               )}
+              {user && <Field><FieldLabel htmlFor="edit-password">Password baru</FieldLabel><Input id="edit-password" type="password" autoComplete="new-password" minLength={8} maxLength={72} value={password} onChange={(event) => setPassword(event.target.value)} disabled={pending} placeholder="Kosongkan jika tidak diubah" /><FieldDescription>Isi hanya jika password akun perlu diganti.</FieldDescription></Field>}
               <SelectField label="Divisi" value={selectedDivision} onChange={setDivision} options={[{ value: 'none', label: 'Tanpa divisi' }, ...data.divisions.map((item) => ({ value: String(item.id), label: item.nama }))]} disabled={pending} />
             </FieldGroup>
             {divisionNeedsSelection && <Alert><AlertDescription>Divisi sebelumnya tidak dapat dipetakan. Pilih divisi secara eksplisit sebelum menyimpan.</AlertDescription></Alert>}

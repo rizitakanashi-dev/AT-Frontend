@@ -31,9 +31,12 @@ export function HostingOverview({ requests, role }: { requests: HostingRequestLi
   ];
   return <div className="flex flex-col gap-5">
     <section className="directory-intro hosting-intro" aria-label="Alur hosting proyek">
-      <div className="flex items-center gap-3"><span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent text-primary"><Rocket className="size-5" /></span><div><p className="text-xs font-medium tracking-widest text-primary">DARI PROYEK KE PUBLIK</p><h2 className="mt-1 text-lg font-semibold tracking-tight">Satu alur, sampai siap mengudara.</h2></div></div>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-center gap-3"><span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent text-primary"><Rocket className="size-5" /></span><div><p className="text-xs font-medium tracking-widest text-primary">DARI PROYEK KE PUBLIK</p><h2 className="mt-1 text-lg font-semibold tracking-tight">Satu alur, sampai siap mengudara.</h2></div></div>
+        <p className="max-w-md text-sm leading-relaxed text-muted-foreground">{role === 'PM' ? 'Pastikan detail dan kesiapan proyek sudah lengkap sebelum menyetujui.' : role === 'DevOps' ? 'Antrian ini hanya berisi permintaan yang sudah lolos review Project Manager.' : role === 'Admin' ? 'Satu panel untuk memantau semua pemohon, reviewer, dan penanggung jawab.' : 'Ikuti progres pengajuanmu dari review sampai tautan hosting aktif.'}</p>
+      </div>
       <HostingProgress />
     </section>
-    <div className="stagger-in grid grid-cols-2 gap-3 xl:grid-cols-4">{stats.map(({ label, value, hint, icon: Icon }) => <Card key={label} className="hover-lift hosting-stat"><CardHeader><CardDescription>{label}</CardDescription><CardAction><Icon className="size-4 text-primary" /></CardAction><CardTitle><span className="text-3xl font-semibold tracking-tight tabular-nums">{value}</span></CardTitle></CardHeader><CardContent><p className="text-xs text-muted-foreground">{hint}</p></CardContent></Card>)}</div>
+    <div data-anime="stagger" className="stagger-in grid grid-cols-2 gap-3 xl:grid-cols-4">{stats.map(({ label, value, hint, icon: Icon }) => <Card key={label} className="hover-lift hosting-stat"><CardHeader><CardDescription>{label}</CardDescription><CardAction><Icon className="size-4 text-primary" /></CardAction><CardTitle><span className="text-3xl font-semibold tracking-tight tabular-nums">{value}</span></CardTitle></CardHeader><CardContent><p className="text-xs text-muted-foreground">{hint}</p></CardContent></Card>)}</div>
   </div>;
 }
