@@ -6,9 +6,7 @@ import {
   ShieldCheck, 
   Sparkles, 
   Target, 
-  Users, 
-  TrendingUp,
-  Clock3,
+  Users,
   CheckCircle2,
   ArrowUpRight
 } from 'lucide-react';

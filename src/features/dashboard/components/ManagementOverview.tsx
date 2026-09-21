@@ -2,21 +2,15 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import { 
-  ArrowRight, 
-  ArrowUpRight, 
-  CalendarDays, 
-  RefreshCw, 
-  Sparkles, 
-  Users, 
-  CheckCircle2, 
-  Activity, 
-  FolderKanban, 
-  Trophy, 
-  Clock, 
-  Layers, 
-  Eye, 
-  TrendingUp,
-  ArrowDownRight
+  ArrowUpRight,
+  RefreshCw,
+  Users,
+  CheckCircle2,
+  Activity,
+  FolderKanban,
+  Trophy,
+  Layers,
+  Eye
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { fetcher } from '@/lib/api';

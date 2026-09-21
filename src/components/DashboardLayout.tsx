@@ -15,9 +15,7 @@ import {
   CalendarDays, 
   Rocket, 
   Search, 
-  Bell,
-  Sparkles,
-  CheckCircle2
+  Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { logoutUser } from '@/features/absensi/services/authService';

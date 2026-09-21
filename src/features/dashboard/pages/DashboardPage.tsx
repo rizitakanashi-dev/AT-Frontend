@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, CheckCircle2, Clock3, Rocket, Sparkles, Target, TrendingUp, Zap } from 'lucide-react';
+import { ArrowUpRight, CheckCircle2, Clock3, Sparkles, Target, Zap } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { AttendancePanel } from '../components/AttendancePanel';

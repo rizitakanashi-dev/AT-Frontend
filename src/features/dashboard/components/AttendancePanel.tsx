@@ -1,13 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import useSWR from 'swr';
-import { ArrowDownToLine, ArrowUpFromLine, Clock, LoaderCircle, CheckCircle2, Sparkles, FolderKanban } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, Clock, LoaderCircle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetcher, errorMessage } from '@/lib/api';
 import { getMyAttendance, getProjectAnggota, getProjects, postAbsenMasuk, postAbsenPulang } from '../absensiService';
 import { useProfile, useRefreshWorkspace, useToday } from '../useWorkspace';
 import type { StatusDTO } from '@/types/absensi';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Field, FieldLabel, FieldGroup } from '@/components/ui/field';
