@@ -47,41 +47,32 @@ export const createTarget = (data: TargetInput) => api.post('/v1/target', data);
 export const updateTarget = (id: number, data: Omit<TargetInput, 'idUser'>) => api.put(`/v1/target/${id}`, { id, ...data });
 export const deleteTarget = (id: number) => api.delete(`/v1/target/${id}`);
 
-export async function getUsers() {
-  const [anggota, guru, pm, devops] = await Promise.all([
-    fetcher<UserDTO[]>('/Anggota'), getGuruUsers(), fetcher<UserDTO[]>('/PM'), getDevOpsUsers(),
-  ]);
-  return [...anggota, ...guru, ...pm, ...devops];
+export const getUsers = () => fetcher<UserDTO[]>('/v1/admin/users');
+
+function adminUserPayload(data: UserInput, includePassword = true) {
+  return {
+    Nama: data.nama.trim(),
+    ...(includePassword ? { Password: data.password } : {}),
+    IdRole: data.id_role,
+    IdDivisi: data.id_divisi > 0 ? data.id_divisi : null,
+  };
 }
 
-const userEndpoints: Record<string, { create: string; manage?: string }> = {
-  Anggota: { create: '/Anggota/register' },
-  PM: { create: '/PM/register' },
-  Guru: { create: '/v1/guru', manage: '/v1/guru' },
-  DevOps: { create: '/DevOps/register', manage: '/DevOps' },
-};
-
 export function canManageUser(role: string) {
-  return Boolean(userEndpoints[role]?.manage);
+  return ['Admin', 'PM', 'Guru', 'DevOps', 'Anggota', 'Pelajar'].includes(role);
 }
 
 export function createUser(role: string, data: UserInput) {
-  const endpoint = userEndpoints[role];
-  if (!endpoint) throw new Error(`Pembuatan akun ${role} belum didukung backend.`);
-  return api.post(endpoint.create, data);
-}
-
-function userMutationPath(user: Pick<UserDTO, 'id' | 'role'>) {
-  const path = userEndpoints[user.role]?.manage;
-  if (!path) throw new Error(`Endpoint edit dan hapus ${user.role} belum tersedia di backend.`);
-  if (!Number.isSafeInteger(user.id) || user.id <= 0) throw new Error('ID pengguna tidak valid.');
-  return `${path}/${user.id}`;
+  if (!canManageUser(role)) throw new Error(`Pembuatan akun ${role} belum didukung backend.`);
+  return api.post('/v1/admin/users', adminUserPayload(data));
 }
 
 export function updateUser(user: UserDTO, data: UserInput) {
-  return api.put(userMutationPath(user), { ...data, password: '' });
+  if (!Number.isSafeInteger(user.id) || user.id <= 0) throw new Error('ID pengguna tidak valid.');
+  return api.put(`/v1/admin/users/${user.id}`, adminUserPayload(data, Boolean(data.password.trim())));
 }
 
 export function deleteUser(user: UserDTO) {
-  return api.delete(userMutationPath(user));
+  if (!Number.isSafeInteger(user.id) || user.id <= 0) throw new Error('ID pengguna tidak valid.');
+  return api.delete(`/v1/admin/users/${user.id}`);
 }

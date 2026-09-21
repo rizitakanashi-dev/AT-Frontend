@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowDownAZ, ArrowUpAZ, Building2, Eye, Pencil, Trash2 } from 'lucide-react';
 import type { UserDTO } from '@/types/absensi';
-import { roleLabel } from '@/lib/roles';
+import { isAnggota, roleLabel } from '@/lib/roles';
 import { canManageUser } from '../absensiService';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +24,8 @@ export function UserDirectory({ users, admin, onEdit, onDelete, onView }: {
   const [descending, setDescending] = useState(false);
   const roles = admin ? ['all', 'Anggota', 'Guru', 'PM', 'DevOps', 'Admin'] : ['all'];
   const query = search.trim().toLocaleLowerCase('id-ID');
-  const filtered = users.filter((user) => (role === 'all' || user.role === role) && `${user.nama} ${user.divisi || ''} ${roleLabel(user.role)}`.toLocaleLowerCase('id-ID').includes(query))
+  const matchesRole = (userRole: string) => role === 'all' || (role === 'Anggota' ? isAnggota(userRole) : userRole === role);
+  const filtered = users.filter((user) => matchesRole(user.role) && `${user.nama} ${user.divisi || ''} ${roleLabel(user.role)}`.toLocaleLowerCase('id-ID').includes(query))
     .sort((a, b) => (descending ? -1 : 1) * a.nama.localeCompare(b.nama, 'id'));
   const current = Math.min(page, Math.max(1, Math.ceil(filtered.length / 10)));
 
@@ -35,7 +36,7 @@ export function UserDirectory({ users, admin, onEdit, onDelete, onView }: {
           {roles.map((item) => (
             <TabsTrigger key={item} value={item} className="min-h-11 px-3">
               {item === 'all' ? 'Semua pengguna' : item === 'Anggota' ? 'Pelajar' : item}
-              <span className="tabular-nums">{users.filter((user) => item === 'all' || user.role === item).length}</span>
+              <span className="tabular-nums">{users.filter((user) => item === 'all' || (item === 'Anggota' ? isAnggota(user.role) : user.role === item)).length}</span>
             </TabsTrigger>
           ))}
         </TabsList>
@@ -75,7 +76,6 @@ export function UserDirectory({ users, admin, onEdit, onDelete, onView }: {
                       <TableCell>
                         <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="icon" onClick={() => onView(user)} aria-label={`Lihat ${user.nama}`} title="Lihat profil"><Eye /></Button>
-                          {admin && !canManageUser(user.role) && <span className="hidden items-center pr-2 text-xs text-muted-foreground lg:flex" title="Endpoint edit/hapus peran ini belum tersedia di backend">Hanya lihat</span>}
                           {admin && canManageUser(user.role) && <>
                             <Button variant="ghost" size="icon" onClick={() => onEdit(user)} aria-label={`Edit ${user.nama}`} title="Edit pengguna"><Pencil /></Button>
                             <Button variant="ghost" size="icon" onClick={() => onDelete(user)} aria-label={`Hapus ${user.nama}`} title="Hapus pengguna"><Trash2 /></Button>

@@ -33,11 +33,11 @@ const TAB_CONFIG: Record<string, TabDef[]> = {
   ],
 };
 
-const TITLE_BY_ROLE: Record<string, string> = { Anggota: 'Hosting saya', PM: 'Review hosting', DevOps: 'Antrian hosting', Admin: 'Hosting' };
+const TITLE_BY_ROLE: Record<string, string> = { Anggota: 'Hosting saya', PM: 'Review hosting', DevOps: 'Project disetujui', Admin: 'Hosting' };
 const SUBTITLE_BY_ROLE: Record<string, string> = {
   Anggota: 'Ajukan hosting untuk proyekmu dan pantau statusnya.',
   PM: 'Tinjau permintaan hosting dari anggota sebelum diteruskan ke DevOps.',
-  DevOps: 'Proses permintaan hosting yang sudah disetujui PM.',
+  DevOps: 'Lihat project yang sudah disetujui PM dan lanjutkan proses hosting.',
   Admin: 'Pantau seluruh permintaan hosting dari pengajuan hingga selesai.',
 };
 
