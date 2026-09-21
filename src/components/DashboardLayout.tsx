@@ -42,7 +42,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
   }, [pathname]);
   const { mutate } = useSWRConfig();
   const nav = devops ? [
-    { label: 'Project disetujui', icon: Rocket, path: home },
+    { label: 'Dashboard DevOps', icon: Rocket, path: home },
   ] : [
     { label: 'Ringkasan', icon: LayoutDashboard, path: home },
     { label: member ? 'Absensi saya' : 'Rekap kehadiran', icon: ClipboardCheck, path: `${home}/absensi` },
@@ -73,7 +73,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
         <div className="flex flex-col gap-3"><p className="px-3 text-sm text-muted-foreground">Workspace</p><nav aria-label="Navigasi utama" className="flex flex-col gap-1">{nav.map(({ label, icon: Icon, path }) => <NavLink key={path} to={path} end className="nav-link" onClick={() => setMenuOpen(false)}><Icon className="size-[18px]" strokeWidth={1.7} />{label}</NavLink>)}</nav></div>
       </div>
       <div className="flex flex-col gap-4">
-        <div className="rounded-xl bg-muted p-4 text-muted-foreground"><p className="font-medium text-foreground">Sedikit progres, setiap hari.</p><p className="mt-1 text-sm leading-relaxed">Catat kehadiran. Kerjakan target. Tumbuh bersama.</p></div>
+        <div className="sidebar-pulse"><div className="mb-4 flex items-center justify-between"><span className="sidebar-pulse-icon"><Rocket className="size-4" /></span><span className="text-[10px] font-semibold uppercase tracking-[.16em] text-primary">Tefa pulse</span></div><p className="font-medium text-foreground">Sedikit progres, setiap hari.</p><p className="mt-1 text-sm leading-relaxed text-muted-foreground">Catat kehadiran. Kerjakan target. Tumbuh bersama.</p><div className="mt-4 flex items-center gap-2"><span className="h-1.5 flex-1 overflow-hidden rounded-full bg-primary/15"><span className="block h-full w-2/3 rounded-full bg-primary" /></span><span className="text-xs font-medium text-primary">66%</span></div></div>
         <Separator />
         <div className="flex items-center gap-3"><Avatar><AvatarFallback>{session?.nama.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar><div className="min-w-0 flex-1"><p className="truncate font-medium">{session?.nama}</p><p className="text-sm text-muted-foreground">{roleLabel(role)}</p></div><Button size="icon" variant="ghost" onClick={() => void logout()} disabled={leaving} aria-label="Keluar dari akun"><LogOut /></Button></div>
       </div>
@@ -82,11 +82,11 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
   return <div className="workspace-shell flex min-h-dvh bg-background text-foreground">
     <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-card focus:p-3 focus:text-foreground">Lewati navigasi</a>
-    <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 border-r bg-card text-card-foreground lg:block"><SidebarContent /></aside>
+    <aside className="workspace-sidebar sticky top-0 hidden h-dvh w-60 shrink-0 border-r lg:block"><SidebarContent /></aside>
     <div className="min-w-0 flex-1">
       <header className="workspace-header sticky top-0 z-10 flex h-20 items-center justify-between border-b bg-background/95 px-5 text-foreground backdrop-blur-sm md:px-9">
         <div className="flex min-w-0 items-center gap-3"><Sheet open={menuOpen} onOpenChange={setMenuOpen}><SheetTrigger asChild><Button size="icon" variant="ghost" className="lg:hidden" aria-label="Buka navigasi"><Menu /></Button></SheetTrigger><SheetContent side="left" className="w-72"><SheetHeader className="sr-only"><SheetTitle>Navigasi workspace</SheetTitle><SheetDescription>Menu sesuai peran akun Anda.</SheetDescription></SheetHeader><SidebarContent /></SheetContent></Sheet><span className="hidden text-muted-foreground sm:inline">Workspace</span><ChevronRight className="hidden size-4 shrink-0 text-muted-foreground sm:block" /><span className="truncate font-medium">{title}</span></div>
-        <div className="flex items-center gap-3"><span className="workspace-status hidden items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium text-muted-foreground md:flex"><span className="live-dot size-1.5 rounded-full bg-primary" />{roleLabel(role)} siap bekerja</span><span className="hidden items-center gap-2 text-sm text-muted-foreground xl:flex"><CalendarDays className="size-4" />{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span><ThemeToggle /></div>
+        <div className="flex items-center gap-3"><span className="workspace-status hidden items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium text-muted-foreground md:flex"><span className="live-dot size-1.5 rounded-full bg-primary" />{roleLabel(role)} siap bekerja</span><span className="workspace-date hidden items-center gap-2 text-sm text-muted-foreground xl:flex"><CalendarDays className="size-4 text-primary" />{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span><ThemeToggle /></div>
       </header>
       <main id="main-content" ref={mainRef} className="workspace-main mx-auto max-w-[1440px] px-5 py-8 md:px-9 md:py-9">
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4"><div><div className="workspace-kicker"><span className="live-dot size-1.5 rounded-full bg-primary" />{roleLabel(role)} workspace</div><h1 className="text-balance text-2xl font-semibold tracking-tight md:text-[28px]">{title}</h1><p className="mt-1 text-pretty text-muted-foreground">{subtitle}</p></div>{actions}</div>

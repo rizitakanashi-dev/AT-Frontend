@@ -47,7 +47,18 @@ export const createTarget = (data: TargetInput) => api.post('/v1/target', data);
 export const updateTarget = (id: number, data: Omit<TargetInput, 'idUser'>) => api.put(`/v1/target/${id}`, { id, ...data });
 export const deleteTarget = (id: number) => api.delete(`/v1/target/${id}`);
 
-export const getUsers = () => fetcher<UserDTO[]>('/v1/admin/users');
+export async function getUsers(): Promise<UserDTO[]> {
+  try {
+    return await fetcher<UserDTO[]>('/v1/admin/users');
+  } catch (error) {
+    const status = (error as { response?: { status?: number } }).response?.status;
+    if (status !== 404) throw error;
+    const results = await Promise.allSettled([fetcher<UserDTO[]>('/Anggota'), getGuruUsers(), fetcher<UserDTO[]>('/PM'), getDevOpsUsers()]);
+    const users = results.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
+    if (!users.length) throw error;
+    return users;
+  }
+}
 
 function adminUserPayload(data: UserInput, includePassword = true) {
   return {
