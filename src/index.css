@@ -111,7 +111,6 @@
       radial-gradient(circle at 75% -12%, rgba(16, 185, 129, 0.07), transparent 35rem),
       radial-gradient(circle at 10% 90%, rgba(59, 130, 246, 0.05), transparent 32rem);
   }
-=======
   .login-page { background-image: radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--primary) 8%, transparent), transparent 22rem), radial-gradient(circle at 92% 92%, color-mix(in srgb, var(--primary) 7%, transparent), transparent 25rem); }
   .login-header { position: relative; z-index: 2; }
   .login-stage { position: relative; }
@@ -505,7 +504,6 @@
   .stagger-in > *:nth-child(3) { animation-delay: 80ms; }
   .stagger-in > *:nth-child(4) { animation-delay: 120ms; }
   .stagger-in > *:nth-child(5) { animation-delay: 160ms; }
-}
 
 @keyframes live-ping {
   0% { transform: scale(1); opacity: 0.6; }
