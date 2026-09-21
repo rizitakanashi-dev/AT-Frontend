@@ -72,10 +72,17 @@ export function UserEditor({ user, onClose }: { user?: UserDTO; onClose: () => v
                 <Input id="user-name" value={name} onChange={(event) => setName(event.target.value)} autoComplete="off" maxLength={100} required disabled={pending} placeholder="Nama lengkap pengguna" />
               </Field>
               {user ? (
+<<<<<<< HEAD
                 <SelectField label="Peran" value={role} onChange={setRole} options={roleOptions.filter((item) => ['Admin', 'Anggota', 'Guru', 'PM', 'DevOps'].includes(item.value))} disabled={pending} />
               ) : (
                 <>
                   <SelectField label="Peran" value={role} onChange={setRole} options={roleOptions.filter((item) => ['Anggota', 'Guru', 'PM', 'DevOps'].includes(item.value))} disabled={pending} />
+=======
+                <SelectField label="Peran" value={role} onChange={setRole} options={data.roles.filter((item) => ['Admin', 'Anggota', 'Guru', 'PM', 'DevOps'].includes(normalizeRole(item.nama))).map((item) => ({ value: normalizeRole(item.nama), label: roleLabel(item.nama) }))} disabled={pending} />
+              ) : (
+                <>
+                  <SelectField label="Peran" value={role} onChange={setRole} options={data.roles.filter((item) => ['Anggota', 'Guru', 'PM', 'DevOps'].includes(normalizeRole(item.nama))).map((item) => ({ value: normalizeRole(item.nama), label: roleLabel(item.nama) }))} disabled={pending} />
+>>>>>>> db621cf (feat: standardize role normalization in UserEditor and roles.ts)
                   <Field>
                     <FieldLabel htmlFor="new-password">Kata sandi awal</FieldLabel>
                     <Input id="new-password" type="password" autoComplete="new-password" minLength={8} maxLength={72} required value={password} onChange={(event) => setPassword(event.target.value)} disabled={pending} placeholder="Minimal 8 karakter" />
