@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useSWRConfig } from 'swr';
+import { animate, stagger } from 'animejs';
 import { LayoutDashboard, FolderKanban, ClipboardCheck, History, Users, LogOut, Menu, Target, Building2, CalendarDays, ChevronRight, Rocket } from 'lucide-react';
 import { toast } from 'sonner';
 import { logoutUser } from '@/features/absensi/services/authService';
@@ -22,11 +23,26 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
   const devops = role === 'DevOps';
   const [menuOpen, setMenuOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
   const navigate = useNavigate();
   const { pathname } = useLocation();
+
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !mainRef.current) return;
+    const page = mainRef.current.querySelector('[data-anime="page"]');
+    if (!page) return;
+    const groups = mainRef.current.querySelectorAll('[data-anime="stagger"] > *');
+    const steps = mainRef.current.querySelectorAll('.hosting-step');
+    const animations = [
+      animate(page, { opacity: [0, 1], translateY: [18, 0], duration: 620, ease: 'out(4)' }),
+      animate(groups, { opacity: [0, 1], translateY: [16, 0], scale: [0.97, 1], delay: stagger(70), duration: 560, ease: 'out(4)' }),
+      animate(steps, { opacity: [0, 1], translateX: [-12, 0], delay: stagger(90), duration: 520, ease: 'out(3)' }),
+    ];
+    return () => animations.forEach((animation) => animation.revert());
+  }, [pathname]);
   const { mutate } = useSWRConfig();
   const nav = devops ? [
-    { label: 'Antrian hosting', icon: Rocket, path: home },
+    { label: 'Project disetujui', icon: Rocket, path: home },
   ] : [
     { label: 'Ringkasan', icon: LayoutDashboard, path: home },
     { label: member ? 'Absensi saya' : 'Rekap kehadiran', icon: ClipboardCheck, path: `${home}/absensi` },
@@ -64,17 +80,17 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     </div>;
   }
 
-  return <div className="flex min-h-dvh bg-background text-foreground">
+  return <div className="workspace-shell flex min-h-dvh bg-background text-foreground">
     <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-card focus:p-3 focus:text-foreground">Lewati navigasi</a>
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 border-r bg-card text-card-foreground lg:block"><SidebarContent /></aside>
     <div className="min-w-0 flex-1">
-      <header className="sticky top-0 z-10 flex h-20 items-center justify-between border-b bg-background/95 px-5 text-foreground backdrop-blur-sm md:px-9">
-        <div className="flex items-center gap-3"><Sheet open={menuOpen} onOpenChange={setMenuOpen}><SheetTrigger asChild><Button size="icon" variant="ghost" className="lg:hidden" aria-label="Buka navigasi"><Menu /></Button></SheetTrigger><SheetContent side="left" className="w-72"><SheetHeader className="sr-only"><SheetTitle>Navigasi workspace</SheetTitle><SheetDescription>Menu sesuai peran akun Anda.</SheetDescription></SheetHeader><SidebarContent /></SheetContent></Sheet><span className="hidden text-muted-foreground sm:inline">Workspace</span><ChevronRight className="hidden size-4 text-muted-foreground sm:block" /><span className="font-medium">{title}</span></div>
-        <div className="flex items-center gap-4"><span className="hidden items-center gap-2 text-sm text-muted-foreground md:flex"><CalendarDays className="size-4" />{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span><ThemeToggle /></div>
+      <header className="workspace-header sticky top-0 z-10 flex h-20 items-center justify-between border-b bg-background/95 px-5 text-foreground backdrop-blur-sm md:px-9">
+        <div className="flex min-w-0 items-center gap-3"><Sheet open={menuOpen} onOpenChange={setMenuOpen}><SheetTrigger asChild><Button size="icon" variant="ghost" className="lg:hidden" aria-label="Buka navigasi"><Menu /></Button></SheetTrigger><SheetContent side="left" className="w-72"><SheetHeader className="sr-only"><SheetTitle>Navigasi workspace</SheetTitle><SheetDescription>Menu sesuai peran akun Anda.</SheetDescription></SheetHeader><SidebarContent /></SheetContent></Sheet><span className="hidden text-muted-foreground sm:inline">Workspace</span><ChevronRight className="hidden size-4 shrink-0 text-muted-foreground sm:block" /><span className="truncate font-medium">{title}</span></div>
+        <div className="flex items-center gap-3"><span className="workspace-status hidden items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium text-muted-foreground md:flex"><span className="live-dot size-1.5 rounded-full bg-primary" />{roleLabel(role)} siap bekerja</span><span className="hidden items-center gap-2 text-sm text-muted-foreground xl:flex"><CalendarDays className="size-4" />{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span><ThemeToggle /></div>
       </header>
-      <main id="main-content" className="mx-auto max-w-[1440px] px-5 py-8 md:px-9 md:py-9">
-        <div className="mb-8 flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-balance text-2xl font-semibold tracking-tight md:text-[28px]">{title}</h1><p className="mt-1 text-pretty text-muted-foreground">{subtitle}</p></div>{actions}</div>
-        <div key={pathname} className="page-enter">{children}</div>
+      <main id="main-content" ref={mainRef} className="workspace-main mx-auto max-w-[1440px] px-5 py-8 md:px-9 md:py-9">
+        <div className="mb-8 flex flex-wrap items-start justify-between gap-4"><div><div className="workspace-kicker"><span className="live-dot size-1.5 rounded-full bg-primary" />{roleLabel(role)} workspace</div><h1 className="text-balance text-2xl font-semibold tracking-tight md:text-[28px]">{title}</h1><p className="mt-1 text-pretty text-muted-foreground">{subtitle}</p></div>{actions}</div>
+        <div key={pathname} data-anime="page" className="page-enter">{children}</div>
       </main>
     </div>
   </div>;

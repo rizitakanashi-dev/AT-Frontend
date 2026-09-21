@@ -42,36 +42,24 @@ describe('Kontrak Absensi-Tefa', () => {
     await expect(getRekapAbsensi('2026-09-18')).rejects.toThrow('Format rekap');
   });
 
-  it.each([
-    ['Anggota', '/Anggota/register'], ['PM', '/PM/register'],
-    ['Guru', '/v1/guru'], ['DevOps', '/DevOps/register'],
-  ])('membuat akun %s lewat endpoint yang sesuai', async (role, path) => {
+  it.each(['Anggota', 'PM', 'Guru', 'DevOps', 'Admin'])('membuat akun %s lewat endpoint administrasi', async (role) => {
     const payload = { nama: 'Tes', password: 'test-only-password', id_role: 5, id_divisi: 2 };
     await createUser(role, payload);
-    expect(api.post).toHaveBeenCalledWith(path, payload);
+    expect(api.post).toHaveBeenCalledWith('/v1/admin/users', { Nama: 'Tes', Password: 'test-only-password', IdRole: 5, IdDivisi: 2 });
   });
 
-  it.each([['Guru', '/v1/guru'], ['DevOps', '/DevOps']])('mengubah dan menghapus %s tanpa mengganti perannya', async (role, path) => {
+  it.each(['Anggota', 'PM', 'Guru', 'DevOps', 'Admin'])('mengubah dan menghapus %s lewat endpoint administrasi', async (role) => {
     const user = { id: 9, nama: 'Tes', role };
-    const payload = { nama: 'Nama baru', password: 'ignored', id_role: role === 'DevOps' ? 5 : 2, id_divisi: 3 };
+    const payload = { nama: 'Nama baru', password: 'ignored', id_role: 2, id_divisi: 3 };
     await updateUser(user, payload);
     await deleteUser(user);
-    expect(api.put).toHaveBeenCalledWith(`${path}/9`, { ...payload, password: '' });
-    expect(api.delete).toHaveBeenCalledWith(`${path}/9`);
+    expect(api.put).toHaveBeenCalledWith('/v1/admin/users/9', { Nama: 'Nama baru', Password: 'ignored', IdRole: 2, IdDivisi: 3 });
+    expect(api.delete).toHaveBeenCalledWith('/v1/admin/users/9');
     expect(canManageUser(role)).toBe(true);
   });
 
-  it.each(['Anggota', 'PM', 'Admin'])('tidak mengirim %s ke endpoint Guru/DevOps yang salah', (role) => {
-    const user = { id: 9, nama: 'Tes', role };
-    const payload = { nama: 'Tes', password: '', id_role: 3, id_divisi: 0 };
-    expect(canManageUser(role)).toBe(false);
-    expect(() => updateUser(user, payload)).toThrow('belum tersedia');
-    expect(() => deleteUser(user)).toThrow('belum tersedia');
-    expect(api.put).not.toHaveBeenCalled();
-    expect(api.delete).not.toHaveBeenCalled();
-  });
-
-  it('menolak peran tidak dikenal tanpa membuat akun anggota secara diam-diam', () => {
+  it('menolak peran tidak dikenal tanpa membuat akun secara diam-diam', () => {
+    expect(canManageUser('Unknown')).toBe(false);
     expect(() => createUser('Unknown', { nama: 'Tes', password: 'test-only-password', id_role: 0, id_divisi: 0 })).toThrow('belum didukung');
     expect(api.post).not.toHaveBeenCalled();
   });
