@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import useSWR from 'swr';
-import { Plus, RefreshCw, ShieldCheck, Users } from 'lucide-react';
+import { Activity, BriefcaseBusiness, Plus, RefreshCw, ShieldCheck, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import DashboardLayout from '@/components/DashboardLayout';
 import { fetcher } from '@/lib/api';
@@ -25,10 +25,12 @@ export default function UsersPage() {
   const [editor, setEditor] = useState<UserDTO | 'new' | null>(null);
   const [deleting, setDeleting] = useState<UserDTO | null>(null);
   const [viewing, setViewing] = useState<UserDTO | null>(null);
+  const users = admin && profile && data && !data.some((user) => user.id === profile.id) ? [...data, profile] : data || [];
+  const roleCount = (target: string) => users.filter((user) => normalizeRole(user.role) === target).length;
 
   return (
     <DashboardLayout title={admin ? 'Pengguna' : 'Anggota'} subtitle={admin ? 'Satu tempat untuk mengenal tim dan mengelola akun.' : 'Kenali anggota dan divisi di Teaching Factory.'} actions={admin && <Button onClick={() => setEditor('new')}><Plus data-icon="inline-start" />Tambah pengguna</Button>}>
-      <div className="page-stack">
+      <div className="page-stack stagger-in">
         <section className="directory-intro" aria-label="Direktori Teaching Factory">
           <div className="flex items-start gap-4">
             <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground"><Users className="size-6" /></div>
@@ -36,7 +38,14 @@ export default function UsersPage() {
           </div>
           <Button variant="outline" size="sm" onClick={() => void mutate()} disabled={isValidating || !profile}><RefreshCw data-icon="inline-start" className={isValidating ? 'animate-spin' : ''} />{isValidating ? 'Memuat...' : 'Perbarui'}</Button>
         </section>
-        {error ? <ErrorState error={error} retry={() => void mutate()} /> : isLoading || !profile ? <LoadingState /> : <UserDirectory users={admin && profile && data && !data.some((user) => user.id === profile.id) ? [...data, profile] : data || []} admin={admin} onEdit={setEditor} onDelete={setDeleting} onView={setViewing} />}
+        {error ? <ErrorState error={error} retry={() => void mutate()} /> : isLoading || !profile ? <LoadingState /> : <>
+          <section className="grid gap-4 sm:grid-cols-3" aria-label="Ringkasan pengguna">
+            <article className="dashboard-stat hover-lift stagger-card"><div className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">Total pengguna</p><p className="mt-2 text-3xl font-semibold tracking-tight">{users.length}</p></div><span className="flex size-11 items-center justify-center rounded-2xl bg-accent text-primary"><Users className="size-5" /></span></div></article>
+            <article className="dashboard-stat hover-lift stagger-card"><div className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">Tim operasional</p><p className="mt-2 text-3xl font-semibold tracking-tight">{roleCount('DevOps') + roleCount('PM')}</p></div><span className="flex size-11 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,#54bda0_18%,transparent)] text-[#2e927e]"><BriefcaseBusiness className="size-5" /></span></div></article>
+            <article className="dashboard-stat hover-lift stagger-card"><div className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">Akun terkelola</p><p className="mt-2 text-3xl font-semibold tracking-tight">{admin ? roleCount('Admin') : users.length}</p></div><span className="flex size-11 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,#a475d4_18%,transparent)] text-[#8b5fba]"><Activity className="size-5" /></span></div></article>
+          </section>
+          <UserDirectory users={users} admin={admin} onEdit={setEditor} onDelete={setDeleting} onView={setViewing} />
+        </>}
         {admin && <Alert><ShieldCheck /><AlertTitle>Kontrol akun terpusat</AlertTitle><AlertDescription><div className="flex flex-col gap-2"><p>Admin dapat membuat, melihat, mengubah role/divisi, dan menghapus semua akun melalui endpoint administrasi.</p><details><summary className="cursor-pointer font-medium">Catatan keamanan</summary><ul className="mt-2 flex list-disc flex-col gap-1 pl-4"><li>Akun Admin aktif tidak dapat menghapus dirinya sendiri.</li><li>Admin terakhir tidak dapat dihapus oleh server.</li><li>Password hanya dikirim saat membuat akun atau ketika diisi saat edit.</li></ul></details></div></AlertDescription></Alert>}
       </div>
       {admin && editor && <UserEditor user={editor === 'new' ? undefined : editor} onClose={() => setEditor(null)} />}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useSWRConfig } from 'swr';
-import { ShieldCheck, ClipboardCheck, Target, Users } from 'lucide-react';
+import { ClipboardCheck, ShieldCheck, Sparkles, Target, Users } from 'lucide-react';
 import { loginUser } from '@/features/absensi/services/authService';
 import { getSession, saveSession } from '@/lib/session';
 import { errorMessage } from '@/lib/api';
@@ -28,21 +28,19 @@ export default function LoginPage() {
     } catch (err) { setError(errorMessage(err)); }
   }
 
-  return <div className="flex min-h-dvh flex-col bg-background text-foreground">
-    <header className="flex items-center justify-between px-6 py-6 md:px-12"><Brand /><div className="flex items-center gap-5"><span className="hidden text-sm text-muted-foreground sm:inline">binarycodingspace</span><ThemeToggle /></div></header>
-    <main className="mx-auto grid w-full max-w-[1440px] flex-1 items-center lg:grid-cols-2">
-      <section className="px-6 py-10 sm:px-12 lg:px-20"><div className="mx-auto flex max-w-sm flex-col gap-9">
-        <div className="flex flex-col gap-3"><span className="text-sm font-medium text-primary">WORKSPACE TEACHING FACTORY</span><h1 className="text-balance text-4xl font-semibold leading-tight tracking-tight">Selamat datang<br />kembali.</h1><p className="text-pretty text-base leading-relaxed text-muted-foreground">Satu tempat untuk kehadiran, proyek, dan progres belajarmu.</p></div>
-        <LoginForm onSubmit={submit} errorMsg={error} />
-        <div className="flex items-start gap-3 border-t pt-6 text-muted-foreground"><ShieldCheck className="mt-0.5 size-5 shrink-0" /><p className="text-sm leading-relaxed">Gunakan akun yang diberikan administrator.<br />Butuh akses? Hubungi pengelola Teaching Factory.</p></div>
-      </div></section>
-      <section className="hidden h-full max-h-[680px] flex-col px-8 py-6 lg:flex" aria-label="Tentang workspace">
-        <div className="flex h-full flex-col overflow-hidden rounded-3xl border bg-card text-card-foreground">
-          <img src="/images/tefa-workspace.webp" alt="Meja kerja kolaboratif dengan laptop, buku catatan, dan peralatan pengembangan proyek" className="h-72 w-full flex-1 object-cover" width="1200" height="1200" fetchPriority="high" />
-          <div className="p-8 xl:p-10"><div className="flex items-start justify-between gap-5"><h2 className="text-balance text-3xl font-medium leading-tight tracking-tight">Langkah kecil hari ini.<br />Kemampuan besar esok.</h2></div><p className="mt-4 max-w-md text-base leading-relaxed text-muted-foreground">Belajar lewat karya nyata. Bangun kebiasaan baik, selesaikan target, dan bertumbuh bersama tim.</p><div className="mt-7 flex flex-wrap items-center gap-5 text-sm text-muted-foreground"><span className="flex items-center gap-2"><ClipboardCheck className="size-4" />Kehadiran</span><span className="flex items-center gap-2"><Target className="size-4" />Target harian</span><span className="flex items-center gap-2"><Users className="size-4" />Kolaborasi</span></div></div>
-        </div>
-      </section>
+  return <div className="login-page flex min-h-dvh flex-col bg-background text-foreground">
+    <header className="login-header flex items-center justify-between px-6 py-6 md:px-10"><Brand /><div className="flex items-center gap-5"><span className="hidden text-xs font-medium uppercase tracking-[.16em] text-muted-foreground sm:inline">Workspace Tefa</span><ThemeToggle /></div></header>
+    <main className="login-stage flex flex-1 items-center px-4 pb-8 sm:px-6 lg:px-10">
+      <div className="login-frame mx-auto grid w-full max-w-[1220px] overflow-hidden lg:grid-cols-[1.16fr_minmax(360px,.84fr)]">
+        <section className="login-workspace-panel relative hidden min-h-[620px] overflow-hidden lg:flex lg:flex-col" aria-label="Ringkasan workspace Teaching Factory"><div className="login-workspace-rings" aria-hidden="true"><span /><span /><span /></div><div className="relative z-10 flex h-full flex-col justify-between p-10"><div className="login-art-kicker"><Sparkles className="size-3.5" /> Absensi Tefa</div><div className="login-workspace-copy max-w-xs"><p className="login-section-label">Workspace snapshot</p><h2 className="mt-3 text-balance text-4xl font-semibold leading-tight">Kerja rapi,<br />progres terasa.</h2><p className="mt-4 text-sm leading-relaxed">Satu ruang untuk menjaga ritme kehadiran, target harian, dan kolaborasi tim.</p></div><div className="login-workspace-board" aria-hidden="true"><div className="login-board-top"><span /><span /><span /></div><div className="login-board-grid"><div className="login-board-chart"><i /><i /><i /><i /><i /></div><div className="login-board-list"><span /><span /><span /></div></div><div className="login-board-footer"><b>Weekly focus</b><strong>84%</strong></div></div><div className="flex flex-wrap gap-5 text-xs font-medium"><span className="flex items-center gap-2"><ClipboardCheck className="size-4" />Kehadiran</span><span className="flex items-center gap-2"><Target className="size-4" />Target harian</span><span className="flex items-center gap-2"><Users className="size-4" />Kolaborasi</span></div></div></section>
+        <section className="login-panel login-form-panel flex flex-col justify-center px-6 py-10 sm:px-12 lg:px-14 lg:py-14"><div className="mx-auto w-full max-w-sm">
+          <div className="mb-8 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.18em] text-primary"><span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Sparkles className="size-3.5" /></span> Workspace Tefa</div>
+          <div className="flex flex-col gap-3"><h1 className="text-balance text-4xl font-semibold leading-tight tracking-tight">Masuk untuk<br />melanjutkan.</h1><p className="text-pretty text-sm leading-relaxed text-muted-foreground">Kelola kehadiran, proyek, dan progres belajar timmu.</p></div>
+          <div className="mt-8"><LoginForm onSubmit={submit} errorMsg={error} /></div>
+          <div className="mt-8 flex items-start gap-3 border-t pt-5 text-muted-foreground"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" /><p className="text-xs leading-relaxed">Gunakan akun yang diberikan administrator.<br />Butuh akses? Hubungi pengelola Teaching Factory.</p></div>
+        </div></section>
+      </div>
     </main>
-    <footer className="flex flex-wrap justify-between gap-2 px-6 py-6 text-sm text-muted-foreground md:px-12"><span>© {new Date().getFullYear()} binarycodingspace</span><span>Belajar. Berkarya. Bertumbuh.</span></footer>
+    <footer className="flex flex-wrap justify-between gap-2 px-6 py-5 text-xs text-muted-foreground md:px-10"><span>© {new Date().getFullYear()} binarycodingspace</span><span>Belajar. Berkarya. Bertumbuh.</span></footer>
   </div>;
 }
