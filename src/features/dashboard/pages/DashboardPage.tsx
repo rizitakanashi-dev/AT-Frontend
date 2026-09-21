@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, Sparkles, Target, TrendingUp } from 'lucide-react';
+import { ArrowUpRight, CheckCircle2, Clock3, Rocket, Sparkles, Target, TrendingUp } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { AttendancePanel } from '../components/AttendancePanel';
@@ -20,7 +20,8 @@ export default function DashboardPage() {
           </div>
           <div className="dashboard-hero-note"><TrendingUp className="size-5 text-primary" /><div><p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Ritme workspace</p><p className="mt-1 font-medium">Konsisten lebih baik dari terburu-buru.</p></div></div>
         </div>
-        <div className="relative mt-8 grid gap-3 sm:grid-cols-2"><div className="dashboard-hero-metric"><Target className="size-4 text-primary" /><span>Target kerja</span><strong>Siap dilanjutkan</strong></div><div className="dashboard-hero-metric"><TrendingUp className="size-4 text-primary" /><span>Hari ini</span><strong>Bangun progresmu</strong></div></div>
+        <div className="relative mt-8 grid gap-3 sm:grid-cols-3"><div className="dashboard-hero-metric"><Target className="size-4 text-primary" /><span>Target kerja</span><strong>Siap dilanjutkan</strong></div><div className="dashboard-hero-metric"><Clock3 className="size-4 text-primary" /><span>Ritme hari ini</span><strong>Jaga konsistensi</strong></div><div className="dashboard-hero-metric"><Rocket className="size-4 text-primary" /><span>Langkah berikutnya</span><strong>Mulai aktivitas</strong></div></div>
+        <div className="dashboard-hero-footer"><div className="flex items-center gap-2"><span className="flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground"><CheckCircle2 className="size-4" /></span><span>Workspace siap menemani progresmu.</span></div><span className="hidden text-xs font-medium uppercase tracking-[.16em] text-muted-foreground sm:inline">01 / Fokus</span></div>
       </section>
       <div data-anime="stagger"><AttendancePanel /></div>
     </div>

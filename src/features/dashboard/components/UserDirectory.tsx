@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowDownAZ, ArrowUpAZ, Building2, Eye, Pencil, Trash2 } from 'lucide-react';
 import type { UserDTO } from '@/types/absensi';
-import { isAnggota, roleLabel } from '@/lib/roles';
+import { normalizeRole, roleLabel } from '@/lib/roles';
 import { canManageUser } from '../absensiService';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +24,7 @@ export function UserDirectory({ users, admin, onEdit, onDelete, onView }: {
   const [descending, setDescending] = useState(false);
   const roles = admin ? ['all', 'Anggota', 'Guru', 'PM', 'DevOps', 'Admin'] : ['all'];
   const query = search.trim().toLocaleLowerCase('id-ID');
-  const matchesRole = (userRole: string) => role === 'all' || (role === 'Anggota' ? isAnggota(userRole) : userRole === role);
+  const matchesRole = (userRole: string) => role === 'all' || normalizeRole(userRole) === normalizeRole(role);
   const filtered = users.filter((user) => matchesRole(user.role) && `${user.nama} ${user.divisi || ''} ${roleLabel(user.role)}`.toLocaleLowerCase('id-ID').includes(query))
     .sort((a, b) => (descending ? -1 : 1) * a.nama.localeCompare(b.nama, 'id'));
   const current = Math.min(page, Math.max(1, Math.ceil(filtered.length / 10)));
@@ -36,7 +36,7 @@ export function UserDirectory({ users, admin, onEdit, onDelete, onView }: {
           {roles.map((item) => (
             <TabsTrigger key={item} value={item} className="min-h-11 px-3">
               {item === 'all' ? 'Semua pengguna' : item === 'Anggota' ? 'Pelajar' : item}
-              <span className="tabular-nums">{users.filter((user) => item === 'all' || (item === 'Anggota' ? isAnggota(user.role) : user.role === item)).length}</span>
+              <span className="tabular-nums">{users.filter((user) => item === 'all' || normalizeRole(user.role) === normalizeRole(item)).length}</span>
             </TabsTrigger>
           ))}
         </TabsList>
@@ -68,10 +68,10 @@ export function UserDirectory({ users, admin, onEdit, onDelete, onView }: {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="hidden size-10 sm:flex"><AvatarFallback>{user.nama.trim().split(/\s+/).slice(0, 2).map((name) => name[0]).join('').toUpperCase()}</AvatarFallback></Avatar>
-                          <div className="flex min-w-0 flex-col gap-1"><p className="max-w-36 truncate font-medium sm:max-w-48" title={user.nama}>{user.nama}</p><span className="sm:hidden"><Badge variant="secondary">{user.role === 'Anggota' ? 'Pelajar' : user.role}</Badge></span><p className="max-w-36 truncate text-sm text-muted-foreground sm:max-w-48 md:hidden" title={user.divisi || 'Tanpa divisi'}>{user.divisi || 'Tanpa divisi'}</p></div>
+                          <div className="flex min-w-0 flex-col gap-1"><p className="max-w-36 truncate font-medium sm:max-w-48" title={user.nama}>{user.nama}</p><span className="sm:hidden"><Badge variant="secondary">{roleLabel(user.role)}</Badge></span><p className="max-w-36 truncate text-sm text-muted-foreground sm:max-w-48 md:hidden" title={user.divisi || 'Tanpa divisi'}>{user.divisi || 'Tanpa divisi'}</p></div>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell"><Badge variant={user.role === 'DevOps' || user.role === 'PM' ? 'outline' : 'secondary'}>{user.role === 'Anggota' ? 'Pelajar' : user.role}</Badge></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Badge variant={['DevOps', 'PM', 'Admin'].includes(normalizeRole(user.role)) ? 'outline' : 'secondary'}>{roleLabel(user.role)}</Badge></TableCell>
                       <TableCell className="hidden md:table-cell"><span className="flex items-center gap-2 text-muted-foreground"><Building2 className="size-4 shrink-0" />{user.divisi || 'Tanpa divisi'}</span></TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">

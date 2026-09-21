@@ -20,11 +20,12 @@ export function isAnggota(role: string): boolean {
 
 /** Canonicalize a legacy/alias role string to its canonical form. */
 export function normalizeRole(role: string): Role {
-  if (isAnggota(role)) return ROLES.ANGGOTA;
-  if (role === ROLES.ADMIN) return ROLES.ADMIN;
-  if (role === ROLES.PM) return ROLES.PM;
-  if (role === ROLES.GURU) return ROLES.GURU;
-  if (role === ROLES.DEVOPS) return ROLES.DEVOPS;
+  const normalized = role.trim().toLowerCase().replace(/[\s_-]+/g, '');
+  if (normalized === 'anggota' || normalized === 'pelajar') return ROLES.ANGGOTA;
+  if (normalized === 'admin' || normalized === 'administrator') return ROLES.ADMIN;
+  if (normalized === 'pm' || normalized === 'projectmanager') return ROLES.PM;
+  if (normalized === 'guru' || normalized === 'gurupengawas') return ROLES.GURU;
+  if (normalized === 'devops' || normalized === 'devopsengineer') return ROLES.DEVOPS;
   return ROLES.ANGGOTA;
 }
 
