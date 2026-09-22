@@ -101,30 +101,19 @@ export function AttendancePanel() {
               {new Date(`${today}T12:00:00`).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
           </div>
-          <Badge 
-            variant="outline" 
-            className={`text-xs font-semibold ${
-              active.length 
-                ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-400' 
-                : data.rows.length 
-                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' 
-                  : 'border-border text-muted-foreground'
-            }`}
-          >
-            {active.length ? '● Sedang Bekerja' : data.rows.length ? '✓ Aktivitas Selesai' : 'Belum Absen'}
+          <Badge variant={active.length ? 'secondary' : 'outline'}>
+            {active.length ? 'Sedang bekerja' : data.rows.length ? 'Sesi selesai' : 'Belum absen'}
           </Badge>
         </div>
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className={`flex size-12 items-center justify-center rounded-xl ${
-              active.length ? 'bg-cyan-500/10 text-cyan-400 ring-1 ring-cyan-500/20' : 'bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/20'
-            }`}>
+            <div className="flex size-12 items-center justify-center rounded-lg bg-accent text-primary">
               {active.length ? <Clock className="size-6" /> : <CheckCircle2 className="size-6" />}
             </div>
             <div>
               <p className="text-base font-bold text-foreground">
-                {active.length ? 'Sesi workstation sedang berjalan' : data.rows.length ? 'Target hari ini telah diselesaikan' : 'Siap memulai aktivitas kerja?'}
+                {active.length ? 'Sesi kehadiran sedang berjalan' : data.rows.length ? 'Sesi kehadiran telah ditutup' : 'Siap memulai aktivitas kerja?'}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {active.length ? 'Catat hasil pencapaian target sebelum mengakhiri sesi.' : 'Pilih proyek yang ditugaskan dan catat target harian.'}
@@ -136,7 +125,7 @@ export function AttendancePanel() {
             <Button 
               onClick={() => open('in')} 
               disabled={!!active.length || !data.projects.length || !data.statuses.length}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-xs"
+              
             >
               <ArrowDownToLine className="size-4 mr-1.5" />
               <span>Absen Masuk</span>
@@ -145,9 +134,9 @@ export function AttendancePanel() {
               variant="outline" 
               onClick={() => open('out')} 
               disabled={!active.length || !data.statuses.length}
-              className="border-border bg-card/60 backdrop-blur-sm"
+              
             >
-              <ArrowUpFromLine className="size-4 mr-1.5 text-cyan-400" />
+              <ArrowUpFromLine data-icon="inline-start" />
               <span>Absen Pulang</span>
             </Button>
           </div>
@@ -239,7 +228,7 @@ export function AttendancePanel() {
               <Button 
                 type="submit" 
                 size="sm"
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
+                
                 disabled={pending || !status || (mode === 'in' ? !project || !description.trim() : !record)}
               >
                 {pending && <LoaderCircle className="animate-spin size-3.5 mr-1.5" />}
