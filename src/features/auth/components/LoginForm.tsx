@@ -35,7 +35,7 @@ export function LoginForm({ onSubmit, errorMsg }: { onSubmit: (data: LoginFormVa
             <Input 
               id="nama" 
               autoComplete="username" 
-              placeholder="Contoh: rexia / admin" 
+              placeholder="Contoh: budi" 
               className="pl-9.5 text-sm h-10.5 rounded-lg border-border focus:border-emerald-500 focus:ring-emerald-500/20"
               aria-invalid={!!errors.nama} 
               aria-describedby={errors.nama ? 'nama-error' : undefined} 

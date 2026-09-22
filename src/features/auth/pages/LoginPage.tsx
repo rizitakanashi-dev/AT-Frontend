@@ -1,15 +1,7 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useSWRConfig } from 'swr';
-import { 
-  ClipboardCheck, 
-  ShieldCheck, 
-  Sparkles, 
-  Target, 
-  Users,
-  CheckCircle2,
-  ArrowUpRight
-} from 'lucide-react';
+import { ClipboardCheck, ShieldCheck, ArrowUpRight, Layers3, CircleCheck, Command } from 'lucide-react';
 import { loginUser } from '@/features/absensi/services/authService';
 import { getSession, saveSession } from '@/lib/session';
 import { errorMessage } from '@/lib/api';
@@ -18,13 +10,30 @@ import { LoginForm } from '../components/LoginForm';
 import { Brand } from '@/components/Brand';
 import type { LoginFormValues } from '../schemas/loginSchema';
 import { roleHomePath } from '@/lib/roles';
+import '../login.css';
+
+function WorkspaceIllustration() {
+  return (
+    <div className="access-preview" aria-label="Ilustrasi alur kerja, bukan data aktual">
+      <div className="access-preview-heading"><span><Layers3 size={15} /> Workspace overview</span><span className="access-preview-label">ILUSTRASI</span></div>
+      <div className="access-preview-body">
+        <div className="access-preview-title"><div><small>ALUR KERJA TIM</small><h3>Dari rencana, jadi karya.</h3></div><ArrowUpRight size={21} /></div>
+        <div className="access-workflow">
+          {[{ icon: ClipboardCheck, name: 'Mulai hari', detail: 'Catat kehadiran' }, { icon: Layers3, name: 'Bangun progres', detail: 'Kelola target tim' }, { icon: CircleCheck, name: 'Wujudkan hasil', detail: 'Tinjau pencapaian' }].map(({ icon: Icon, name, detail }, index) => (
+            <div className="access-workflow-row" key={name}><span className="access-workflow-icon"><Icon size={18} /></span><div><strong>{name}</strong><p>{detail}</p></div><span className="access-step">0{index + 1}</span></div>
+          ))}
+        </div>
+        <div className="access-preview-bottom"><span className="access-avatar-stack"><i>PM</i><i>DV</i><i>TM</i></span><span>Satu ruang untuk setiap peran.</span></div>
+      </div>
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { mutate } = useSWRConfig();
   const session = getSession();
-  
   if (session) return <Navigate to={roleHomePath(session.role)} replace />;
 
   async function submit(values: LoginFormValues) {
@@ -34,146 +43,45 @@ export default function LoginPage() {
       saveSession(data);
       await mutate(() => true, undefined, { revalidate: false });
       navigate(roleHomePath(data.role), { replace: true });
-    } catch (err) { 
-      setError(errorMessage(err)); 
+    } catch (err) {
+      setError(errorMessage(err));
     }
   }
 
   return (
-    <div className="login-page flex min-h-dvh flex-col justify-between">
+    <div className="access-page">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-5 md:px-12">
-        <Brand />
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
-            <span className="live-dot size-1.5 rounded-full bg-emerald-500" />
-            <span>Portal Aktif</span>
-          </div>
-          <ThemeToggle />
-        </div>
-      </header>
-
+      <header className="access-header"><Brand /><div className="flex items-center gap-4"><span className="access-header-label">YOUR TEAM. ONE WORKSPACE.</span><ThemeToggle /></div></header>
       {/* Main Content Stage */}
-      <main className="flex flex-1 items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
-        <div className="login-frame mx-auto grid w-full max-w-[1100px] overflow-hidden lg:grid-cols-12">
-          
+      <main className="access-main">
+        <div className="access-frame">
           {/* Left Showcase Side (SalesOps Inspired) */}
-          <section className="login-showcase-panel relative hidden min-h-[580px] p-10 lg:col-span-6 lg:flex lg:flex-col lg:justify-between">
-            {/* Ambient glow backgrounds */}
-            <div className="absolute -left-20 -top-20 size-72 rounded-full bg-emerald-500/15 blur-3xl" aria-hidden="true" />
-            <div className="absolute -bottom-20 -right-20 size-72 rounded-full bg-teal-500/15 blur-3xl" aria-hidden="true" />
-
+          <section className="access-story" aria-labelledby="access-story-title">
             {/* Top Badge */}
-            <div className="relative z-10">
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400">
-                <Sparkles className="size-3.5" />
-                <span>Teaching Factory Operations</span>
-              </div>
-              <h2 className="mt-4 text-3xl font-bold tracking-tight text-white lg:text-4xl">
-                Satu dashboard.<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">
-                  Semua progres tim.
-                </span>
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-zinc-300 max-w-md">
-                Pantau rekap kehadiran harian, kelola target kerja divisi, dan track deployment proyek dalam satu platform terpadu.
-              </p>
-            </div>
-
+            <div className="access-eyebrow"><span /> TEACHING FACTORY WORKSPACE</div>
+            <h2 id="access-story-title">Tim yang hebat.<br />Progres yang <em>nyata.</em></h2>
+            <p className="access-story-copy">Satukan kehadiran, target, dan proyek. Fokus pada hal yang paling penting: tumbuh bersama tim.</p>
             {/* Simulated Live Ops Preview Card */}
-            <div className="relative z-10 my-6 rounded-xl border border-white/10 bg-black/40 p-5 backdrop-blur-md shadow-2xl">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs font-semibold text-white">Live Attendance Rate</span>
-                </div>
-                <span className="text-xs font-bold text-emerald-400">94.8%</span>
-              </div>
-
-              <div className="mt-4 grid grid-cols-3 gap-3">
-                <div className="rounded-lg bg-white/5 p-2.5">
-                  <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">Hadir</p>
-                  <p className="mt-1 text-lg font-bold text-white">42</p>
-                  <span className="text-[10px] text-emerald-400 font-medium flex items-center">
-                    <ArrowUpRight className="size-2.5" /> +12%
-                  </span>
-                </div>
-                <div className="rounded-lg bg-white/5 p-2.5">
-                  <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">Target Selesai</p>
-                  <p className="mt-1 text-lg font-bold text-white">128</p>
-                  <span className="text-[10px] text-teal-400 font-medium flex items-center">
-                    <CheckCircle2 className="size-2.5 mr-0.5" /> 88%
-                  </span>
-                </div>
-                <div className="rounded-lg bg-white/5 p-2.5">
-                  <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">Proyek</p>
-                  <p className="mt-1 text-lg font-bold text-white">8</p>
-                  <span className="text-[10px] text-zinc-400 font-medium">Aktif</span>
-                </div>
-              </div>
-
-              {/* Mini Trend Bar */}
-              <div className="mt-4 flex items-end gap-1.5 h-10 pt-2">
-                <div className="flex-1 bg-emerald-500/30 rounded-t h-[40%]" />
-                <div className="flex-1 bg-emerald-500/40 rounded-t h-[65%]" />
-                <div className="flex-1 bg-emerald-500/50 rounded-t h-[50%]" />
-                <div className="flex-1 bg-emerald-500/70 rounded-t h-[85%]" />
-                <div className="flex-1 bg-emerald-500 rounded-t h-[100%]" />
-              </div>
-            </div>
-
+            <WorkspaceIllustration />
             {/* Bottom features list */}
-            <div className="relative z-10 flex items-center gap-6 text-xs text-zinc-300 font-medium">
-              <span className="flex items-center gap-1.5">
-                <ClipboardCheck className="size-4 text-emerald-400" />
-                Absensi Real-time
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Target className="size-4 text-teal-400" />
-                Target Harian
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Users className="size-4 text-emerald-400" />
-                Multi-role
-              </span>
-            </div>
+            <div className="access-story-footer"><span>Terhubung. Terarah. Terukur.</span><span>01 / WORKSPACE</span></div>
           </section>
-
           {/* Right Form Side */}
-          <section className="flex flex-col justify-center p-6 sm:p-10 lg:col-span-6">
-            <div className="mx-auto w-full max-w-sm">
-              <div className="mb-6">
-                <div className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                  <Sparkles className="size-3.5" />
-                  <span>Portal Masuk</span>
-                </div>
-                <h1 className="mt-3 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                  Selamat Datang
-                </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Masukkan nama pengguna dan kata sandi akun Anda.
-                </p>
-              </div>
-
+          <section className="access-form-panel" aria-labelledby="login-title">
+            <div className="access-form-inner">
+              <div className="access-form-mark"><Command size={25} /></div>
+              <p className="access-form-eyebrow">MULAI HARI PRODUKTIFMU</p>
+              <h1 id="login-title">Selamat datang kembali<span>.</span></h1>
+              <p className="access-form-description">Masuk ke workspace dan lanjutkan hal hebat yang sedang kamu kerjakan.</p>
               <LoginForm onSubmit={submit} errorMsg={error} />
-
-              <div className="mt-8 flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-3.5 text-xs text-muted-foreground">
-                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-500" />
-                <p className="leading-relaxed">
-                  Akses diamankan dengan enkripsi sesi server. Hubungi Administrator jika lupa kata sandi.
-                </p>
-              </div>
+              <details className="access-help"><summary>Butuh bantuan masuk?</summary><p>Hubungi administrator Teaching Factory untuk bantuan akun atau pengaturan ulang kata sandi.</p></details>
+              <div className="access-security"><ShieldCheck size={17} /><span>Akses khusus anggota Teaching Factory</span></div>
             </div>
           </section>
-
         </div>
       </main>
-
       {/* Footer */}
-      <footer className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 text-xs text-muted-foreground md:px-12">
-        <span>© {new Date().getFullYear()} Teaching Factory · binarycodingspace</span>
-        <span className="hidden sm:inline">Teaching Factory Management Platform</span>
-      </footer>
+      <footer className="access-footer"><span>© {new Date().getFullYear()} Teaching Factory</span><span>Built for teams, designed for progress.</span><span>by binarycodingspace</span></footer>
     </div>
   );
 }
