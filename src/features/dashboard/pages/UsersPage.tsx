@@ -21,7 +21,7 @@ export default function UsersPage() {
   const profile = useProfile();
   const admin = normalizeRole(profile?.role || '') === 'Admin';
   const refresh = useRefreshWorkspace();
-  const { data, error, isLoading, isValidating, mutate } = useSWR(profile ? ['users-workspace', profile.id, admin] : null, () => admin ? getUsers() : fetcher<UserDTO[]>('/Anggota'));
+  const { data, error, isLoading, isValidating, mutate } = useSWR(profile ? ['users-workspace', profile.id, admin] : null, () => admin ? getUsers() : fetcher<UserDTO[]>('/v1/anggota'));
   const [editor, setEditor] = useState<UserDTO | 'new' | null>(null);
   const [deleting, setDeleting] = useState<UserDTO | null>(null);
   const [viewing, setViewing] = useState<UserDTO | null>(null);

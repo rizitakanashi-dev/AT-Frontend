@@ -40,7 +40,7 @@ export const updateProject = (id: number, nama: string) => api.put(`/v1/project/
 export const deleteProject = (id: number) => api.delete(`/v1/project/${id}`);
 export const getProjectAnggota = () => fetcher<ProjectAnggotaDTO[]>('/v1/project-anggota');
 export const getGuruUsers = () => fetcher<UserDTO[]>('/v1/guru');
-export const getDevOpsUsers = () => fetcher<UserDTO[]>('/DevOps');
+export const getDevOpsUsers = () => fetcher<UserDTO[]>('/v1/devops');
 export const addProjectMember = (user: number, project: number) => api.post('/v1/project-anggota', { user, project });
 export const removeProjectMember = (id: number) => api.delete(`/v1/project-anggota/${id}`);
 export const createTarget = (data: TargetInput) => api.post('/v1/target', data);
@@ -53,7 +53,12 @@ export async function getUsers(): Promise<UserDTO[]> {
   } catch (error) {
     const status = (error as { response?: { status?: number } }).response?.status;
     if (status !== 404) throw error;
-    const results = await Promise.allSettled([fetcher<UserDTO[]>('/Anggota'), getGuruUsers(), fetcher<UserDTO[]>('/PM'), getDevOpsUsers()]);
+    const results = await Promise.allSettled([
+      fetcher<UserDTO[]>('/v1/anggota'),
+      getGuruUsers(),
+      fetcher<UserDTO[]>('/v1/pm'),
+      getDevOpsUsers(),
+    ]);
     const users = results.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
     if (!users.length) throw error;
     return users;
@@ -62,10 +67,10 @@ export async function getUsers(): Promise<UserDTO[]> {
 
 function adminUserPayload(data: UserInput, includePassword = true) {
   return {
-    Nama: data.nama.trim(),
-    ...(includePassword ? { Password: data.password } : {}),
-    IdRole: data.id_role,
-    IdDivisi: data.id_divisi > 0 ? data.id_divisi : null,
+    nama: data.nama.trim(),
+    ...(includePassword ? { password: data.password } : {}),
+    idRole: data.id_role,
+    idDivisi: data.id_divisi > 0 ? data.id_divisi : null,
   };
 }
 

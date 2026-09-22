@@ -22,7 +22,7 @@ export default function ManagementOverview() {
       const [projects, attendance, roster, targets, assignments] = await Promise.all([
         getProjects(),
         getRekapAbsensi(today),
-        fetcher<UserDTO[]>('/Anggota'),
+        fetcher<UserDTO[]>('/v1/anggota'),
         fetcher<TargetDTO[]>('/v1/target'),
         getProjectAnggota(),
       ]);

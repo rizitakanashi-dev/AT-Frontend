@@ -17,7 +17,7 @@ import { LoadingState, ErrorState, EmptyState } from '@/components/DataState';
 
 export function ProjectMembers({ project, canManage, onClose }: { project: ProjectDTO; canManage: boolean; onClose: () => void }) {
   const members = useSWR<ProjectAnggotaDTO[]>('/v1/project-anggota', fetcher);
-  const roster = useSWR<UserDTO[]>(canManage ? '/Anggota' : null, fetcher);
+  const roster = useSWR<UserDTO[]>(canManage ? '/v1/anggota' : null, fetcher);
   const refresh = useRefreshWorkspace();
   const [userId, setUserId] = useState('');
   const [pending, setPending] = useState(false);

@@ -45,7 +45,7 @@ describe('Kontrak Absensi-Tefa', () => {
   it.each(['Anggota', 'PM', 'Guru', 'DevOps', 'Admin'])('membuat akun %s lewat endpoint administrasi', async (role) => {
     const payload = { nama: 'Tes', password: 'test-only-password', id_role: 5, id_divisi: 2 };
     await createUser(role, payload);
-    expect(api.post).toHaveBeenCalledWith('/v1/admin/users', { Nama: 'Tes', Password: 'test-only-password', IdRole: 5, IdDivisi: 2 });
+    expect(api.post).toHaveBeenCalledWith('/v1/admin/users', { nama: 'Tes', password: 'test-only-password', idRole: 5, idDivisi: 2 });
   });
 
   it.each(['Anggota', 'PM', 'Guru', 'DevOps', 'Admin'])('mengubah dan menghapus %s lewat endpoint administrasi', async (role) => {
@@ -53,7 +53,7 @@ describe('Kontrak Absensi-Tefa', () => {
     const payload = { nama: 'Nama baru', password: 'ignored', id_role: 2, id_divisi: 3 };
     await updateUser(user, payload);
     await deleteUser(user);
-    expect(api.put).toHaveBeenCalledWith('/v1/admin/users/9', { Nama: 'Nama baru', Password: 'ignored', IdRole: 2, IdDivisi: 3 });
+    expect(api.put).toHaveBeenCalledWith('/v1/admin/users/9', { nama: 'Nama baru', password: 'ignored', idRole: 2, idDivisi: 3 });
     expect(api.delete).toHaveBeenCalledWith('/v1/admin/users/9');
     expect(canManageUser(role)).toBe(true);
   });
