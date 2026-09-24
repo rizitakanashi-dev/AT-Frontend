@@ -45,3 +45,11 @@ absensi-app/
 │       └── main.tsx               # Entry point React (DOM Rendering)
 │
 └── README.md                      # Dokumentasi proyek
+```
+
+---
+
+## 📚 Dokumentasi
+
+- [Dokumentasi Proyek Frontend](docs/frontend-project.md) — panduan menyeluruh: struktur, arsitektur, route, fitur, testing, dan deploy.
+- [Menyelesaikan Hosting Request](docs/hosting-complete.md) — alur status, izin tombol "Selesaikan hosting", dan aturan validasi tautan (opsional, auto-`https://` untuk domain polos).
