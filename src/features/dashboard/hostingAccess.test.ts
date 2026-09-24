@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hostingPermissions, safeHostingUrl } from './hostingAccess';
+import { hostingPermissions, parseHostingUrlInput, safeHostingUrl } from './hostingAccess';
 import type { HostingRequestDTO, HostingStatusValue } from '@/types/hosting';
 
 const request: HostingRequestDTO = { id: 1, idUser: 7, idProject: 3, projectName: 'Proyek', userName: 'Pelajar', contactName: 'Kontak', contactEmail: 'test@example.com', contactPhone: '0800000000', status: 'pending', idDevOpsHandler: 9, createdAt: '', updatedAt: '' };
@@ -46,6 +46,27 @@ describe('Izin hosting frontend', () => {
     expect(hostingPermissions(undefined, request).view).toBe(false);
     expect(hostingPermissions(user('Unknown'), request).view).toBe(false);
     expect(hostingPermissions(user('Guru'), request).view).toBe(false);
+  });
+});
+
+describe('Input tautan hosting saat menyelesaikan', () => {
+  it('mengizinkan input kosong (tautan opsional)', () => {
+    expect(parseHostingUrlInput('')).toEqual({ valid: true });
+    expect(parseHostingUrlInput('   ')).toEqual({ valid: true });
+  });
+  it('menerima tautan HTTP/HTTPS valid', () => {
+    expect(parseHostingUrlInput(' https://example.com/app ')).toEqual({ valid: true, url: 'https://example.com/app' });
+  });
+  it('menolak isi non-kosong yang bukan tautan aman', () => {
+    expect(parseHostingUrlInput('javascript:alert(1)')).toEqual({ valid: false });
+    expect(parseHostingUrlInput('not a url')).toEqual({ valid: false });
+  });
+  it('melengkapi domain polos dengan https', () => {
+    expect(parseHostingUrlInput('rizi-takanashi.vercel.app')).toEqual({ valid: true, url: 'https://rizi-takanashi.vercel.app/' });
+    expect(parseHostingUrlInput('example.com/app')).toEqual({ valid: true, url: 'https://example.com/app' });
+  });
+  it('menolak path relatif', () => {
+    expect(parseHostingUrlInput('/relative')).toEqual({ valid: false });
   });
 });
 

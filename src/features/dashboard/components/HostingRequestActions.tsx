@@ -5,7 +5,7 @@ import { Ban, Check, LoaderCircle, Pencil, Play, RotateCcw, Save, Trash2 } from 
 import type { HostingRequestDTO } from '@/types/hosting';
 import { errorMessage } from '@/lib/api';
 import { useProfile } from '../useWorkspace';
-import { hostingPermissions, safeHostingUrl } from '../hostingAccess';
+import { hostingPermissions, parseHostingUrlInput } from '../hostingAccess';
 import { approveHostingRequest, rejectHostingRequest, startHostingProcessing, completeHostingRequest, updateHostingDevOpsNotes, cancelHostingRequest, deleteHostingRequest } from '../hostingService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,13 +70,13 @@ export function HostingRequestActions({ request, onClose, onEdit, onResubmit, on
     {permissions.notes && <form className="flex flex-col gap-4" onSubmit={(event) => {
       event.preventDefault();
       if (!permissions.complete) return;
-      const url = safeHostingUrl(hostingUrl);
-      if (!url) { setError('Masukkan tautan hosting HTTP/HTTPS yang valid, tanpa kredensial.'); return; }
-      void run(() => completeHostingRequest(request.id, { hostingUrl: url, devOpsNotes: notes.trim() }), 'Hosting selesai. Tautan sudah tersedia untuk pemohon.');
+      const parsed = parseHostingUrlInput(hostingUrl);
+      if (!parsed.valid) { setError('Masukkan tautan hosting HTTP/HTTPS yang valid, tanpa kredensial.'); return; }
+      void run(() => completeHostingRequest(request.id, { hostingUrl: parsed.url, devOpsNotes: notes.trim() }), parsed.url ? 'Hosting selesai. Tautan sudah tersedia untuk pemohon.' : 'Hosting selesai.');
     }}><FieldGroup>
-      {permissions.complete && <Field><FieldLabel htmlFor="hosting-url">Tautan hosting aktif</FieldLabel><Input id="hosting-url" type="url" required value={hostingUrl} onChange={(event) => setHostingUrl(event.target.value)} maxLength={500} disabled={pending} placeholder="https://proyek.contoh.com" /><FieldDescription>Pastikan tautan dapat diakses sebelum menyelesaikan hosting.</FieldDescription></Field>}
+      {permissions.complete && <Field><FieldLabel htmlFor="hosting-url">Tautan hosting aktif</FieldLabel><Input id="hosting-url" type="text" inputMode="url" value={hostingUrl} onChange={(event) => setHostingUrl(event.target.value)} maxLength={500} disabled={pending} placeholder="https://proyek.contoh.com (opsional)" /><FieldDescription>Opsional. Jika diisi, pastikan tautan dapat diakses; domain polos otomatis memakai https://.</FieldDescription></Field>}
       <Field><FieldLabel htmlFor="devops-notes">Catatan DevOps</FieldLabel><Textarea id="devops-notes" value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={1000} rows={3} disabled={pending} placeholder="Progres konfigurasi dan deployment. Jangan cantumkan password atau token." /></Field>
-    </FieldGroup><div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="outline" disabled={pending || notes === (request.devOpsNotes || '')} onClick={() => void run(() => updateHostingDevOpsNotes(request.id, notes.trim()), 'Catatan progres disimpan.')}><Save data-icon="inline-start" />Simpan catatan</Button>{permissions.complete && <Button type="submit" disabled={pending || !safeHostingUrl(hostingUrl)}>{spinner || <Check data-icon="inline-start" />}Selesaikan hosting</Button>}</div></form>}
+    </FieldGroup><div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="outline" disabled={pending || notes === (request.devOpsNotes || '')} onClick={() => void run(() => updateHostingDevOpsNotes(request.id, notes.trim()), 'Catatan progres disimpan.')}><Save data-icon="inline-start" />Simpan catatan</Button>{permissions.complete && <Button type="submit" disabled={pending}>{spinner || <Check data-icon="inline-start" />}Selesaikan hosting</Button>}</div></form>}
     {permissions.resubmit && <Alert><AlertDescription>Pengajuan ini ditolak. Mengedit detail tidak mengubah statusnya. Gunakan Ajukan ulang untuk membuat permintaan baru yang akan ditinjau PM; riwayat lama tetap tersimpan.</AlertDescription></Alert>}
     <div className="flex flex-wrap justify-end gap-2">
       {permissions.edit && <><Button variant="outline" disabled={pending} onClick={() => { setError(''); setConfirmation('cancel'); }}><Ban data-icon="inline-start" />Batalkan permintaan</Button><Button variant="outline" disabled={pending} onClick={() => onEdit(request)}><Pencil data-icon="inline-start" />Edit detail</Button></>}

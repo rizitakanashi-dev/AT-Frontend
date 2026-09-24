@@ -33,3 +33,23 @@ export function safeHostingUrl(value?: string | null): string | undefined {
     return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.href : undefined;
   } catch { return undefined; }
 }
+
+/**
+ * Parse input tautan hosting saat menyelesaikan request.
+ * Tautan opsional (sesuai backend): kosong = sah, tanpa URL.
+ * Isi non-kosong wajib tautan HTTP/HTTPS yang aman.
+ */
+export function parseHostingUrlInput(value: string): { valid: true; url?: string } | { valid: false } {
+  const raw = value.trim();
+  if (!raw) return { valid: true };
+  const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw);
+  if (hasScheme) {
+    const url = safeHostingUrl(raw);
+    return url ? { valid: true, url } : { valid: false };
+  }
+  // Path tanpa host (diawali "/") bukan tautan lengkap.
+  if (raw.startsWith('/')) return { valid: false };
+  // Domain polos tanpa skema (mis. "projek.vercel.app") dianggap https://.
+  const url = safeHostingUrl(`https://${raw}`);
+  return url ? { valid: true, url } : { valid: false };
+}
